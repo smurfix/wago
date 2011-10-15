@@ -1,0 +1,40 @@
+===========
+wago access
+===========
+
+This program runs on a Wago Linux controller.
+Its job is to export the external inputs and outputs in a controlled fashion.
+
+It implements the following features:
+
+ * read inputs
+ 
+ * write outputs
+ 
+ * set or clear an output for a pre-set time
+
+ * periodically set+clear an output (Pulse Width Modulation)
+
+ * send a notification whenever an input changes
+
+ * count input transitions, with report timer (i.e. don't send a network message at every transition)
+
+as well as some auxiliary functions
+
+ * measure controller's cycle time
+
+ * set program's poll time
+
+ * (re)initialize outputs, in case of network outage
+
+ * keepalive messages and timer
+
+ * report the kernel-exported CSV list of I/O fields
+
+The controller has a 3 msec debounce filter on its input. The minimum sensible cycle time therefore is 2 msec.
+If you know that no input will change faster than once a second, increasing the timer values will save some power
+and allow the program to react faster (since it usually doesn't need to wait for the controller to finish processing
+its input+output list).
+
+There can be at most one active server connection. A challenge/response mechanism is used to authorize the remote side.
+
