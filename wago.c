@@ -1,13 +1,19 @@
 /*
-  This exmple program provides a trivial server program that listens for TCP
-  connections on port 9995.  When they arrive, it writes a short message to
-  each client connection, and closes each connection once it is flushed.
+  This program controls I/O from/to a Wago 850 Linux controller.
 
-  Where possible, it exits cleanly in response to a SIGINT (ctrl-c).
+  It is available under the GNU General Public license, version 3.
+
+  Copyright © 2011 Matthias Urlichs <matthias@urlichs.de>
+*/
+
+/*
+  This program is based on the sample-hello program from libevent2.
+  The original is avaliable under a BSD-3 license.
 */
 
 
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
@@ -18,6 +24,7 @@
 # endif
 #include <sys/socket.h>
 #endif
+#include <getopt.h>
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -27,7 +34,7 @@
 
 static const char MESSAGE[] = "Hello, World!\n";
 
-static const int PORT = 9995;
+static int port = 59995;
 
 static void listener_cb(struct evconnlistener *, evutil_socket_t,
     struct sockaddr *, int socklen, void *);
@@ -45,6 +52,31 @@ main(int argc, char **argv)
 	struct sockaddr_in sin;
 #ifdef _WIN32
 	WSADATA wsa_data;
+#endif
+
+	{
+		int opt;
+		char *ep;
+		unsigned long p;
+
+		while((opt=getopt(argc,argv,"p:")) >= 0) {
+			switch (opt) {
+			case 'p':
+				p = strtoul(optarg, &ep, 10);
+				if(!*optarg || *ep || port>65535 || port==0 ) {
+					fprintf(stderr, "'%s' is not a valid port. Port numbers need to be >0 and <65536.\n", optarg);
+					exit(1);
+				}
+				port=p;
+				break;
+			default:
+				return -1;
+			}
+		}
+	}
+
+
+#ifdef _WIN32
 	WSAStartup(0x0201, &wsa_data);
 #endif
 
@@ -56,7 +88,7 @@ main(int argc, char **argv)
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(PORT);
+	sin.sin_port = htons(port);
 
 	listener = evconnlistener_new_bind(base, listener_cb, (void *)base,
 	    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1,
