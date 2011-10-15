@@ -38,7 +38,6 @@ static int port = 59995;
 
 static void listener_cb(struct evconnlistener *, evutil_socket_t,
     struct sockaddr *, int socklen, void *);
-static void conn_writecb(struct bufferevent *, void *);
 static void conn_eventcb(struct bufferevent *, short, void *);
 static void signal_cb(evutil_socket_t, short, void *);
 
@@ -130,21 +129,11 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
 		event_base_loopbreak(base);
 		return;
 	}
-	bufferevent_setcb(bev, NULL, conn_writecb, conn_eventcb, NULL);
+	bufferevent_setcb(bev, NULL, NULL, conn_eventcb, NULL);
 	bufferevent_enable(bev, EV_WRITE);
 	bufferevent_disable(bev, EV_READ);
 
 	bufferevent_write(bev, MESSAGE, strlen(MESSAGE));
-}
-
-static void
-conn_writecb(struct bufferevent *bev, void *user_data)
-{
-	struct evbuffer *output = bufferevent_get_output(bev);
-	if (evbuffer_get_length(output) == 0) {
-		printf("flushed answer\n");
-		bufferevent_free(bev);
-	}
 }
 
 static void
