@@ -38,3 +38,14 @@ its input+output list).
 
 There can be at most one active server connection. A challenge/response mechanism is used to authorize the remote side.
 
+Building and installing
+=======================
+
+This program depends on uClibc and libevent2.
+
+uClibc is available from Wago.
+
+For libevent2, download the source and configure as
+
+	sh configure LDFLAGS=-Wl,-elf2flt CC=/usr/local/bin/arm-uclinux-elf-gcc --host=arm-uclinux-elf --disable-openssl --disable-thread-support --disable-malloc-replacement --disable-shared --prefix=/usr/local/arm-linux-uclibc/
+
