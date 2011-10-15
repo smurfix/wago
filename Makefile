@@ -5,8 +5,8 @@ export PATH=/usr/local/bin:/usr/bin:/bin
 
 SRC := $(wildcard *.c)
 
-CFLAGS=-O2 -g
-ACFLAGS=-Os -g -I/usr/local/arm-linux-uclibc/include/
+CFLAGS=-O2 -g -Wall -Werror
+ACFLAGS=-Os -g -Wall -Werror -I/usr/local/arm-linux-uclibc/include/
 
 LDFLAGS=
 ALDFLAGS=-Wl,-elf2flt -L/usr/local/arm-linux-uclibc/lib/
