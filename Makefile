@@ -5,7 +5,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin
 
 SRC := $(wildcard *.c)
 
-CFLAGS=-O2 -g -Wall -Werror
+CFLAGS=-O2 -g -Wall -Werror -DDEMO
 ACFLAGS=-Os -g -Wall -Werror -I/usr/local/arm-linux-uclibc/include/
 
 LDFLAGS=
