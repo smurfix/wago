@@ -78,7 +78,15 @@ Options:\n\
 	exit (err);
 }
 
-int list_bus_debug(struct _bus *bus, void *priv)
+static int report_bus(struct _bus *bus, void *priv)
+{
+	struct evbuffer *out = (struct evbuffer *)priv;
+
+	evbuffer_add_printf(out, "%d: %s:%s %d:%d:%d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->byte_offset,bus->bit_offset,bus->bits);
+	return 0;
+}
+
+static int list_bus_debug(struct _bus *bus, void *priv)
 {
 	printf("%d: %s:%s %d:%d:%d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->byte_offset,bus->bit_offset,bus->bits);
 	return 0;
@@ -276,7 +284,8 @@ static const char std_help_c[] = "=\
 c A B  clear a bit on output port A, offset B.\n\
 .\n";
 static const char std_help_D[] = "=\
-D  dump port list (human-readbale version).\n\
+D  dump port list (human-readable version).\n\
+Dp dump port list (parsed list).\n\
 .\n";
 static const char std_help_unknown[] = "=\
 You requested help on an unknown function (%d).\n\
@@ -323,7 +332,11 @@ parse_input(struct bufferevent *bev, const char *line)
 
 	switch(*line) {
 	case 'D':
-		{
+		if (line[1] == 'p') {
+			evbuffer_add_printf(out,"=Reporting bus data\n");
+			bus_enum(report_bus, out);
+			evbuffer_add(out,".\n",2);
+		} else if (!line[1]) {
 			FILE *fd = bus_description(); 
 			int len;
 			char fbuf[4096],*pbuf;
@@ -346,6 +359,8 @@ parse_input(struct bufferevent *bev, const char *line)
 			}
 			fclose(fd);
 			evbuffer_add(out,".\n",2);
+		} else {
+			evbuffer_add_printf(out,"?Unknown subcommand: '%c'. Help with 'hD'.\n",line[1]);
 		}
 		break;
 	case 'i':
