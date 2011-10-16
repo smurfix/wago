@@ -26,9 +26,7 @@
 #endif
 #include <getopt.h>
 
-#ifndef DEMO
-#include "kbusapi.h"
-#endif
+#include "bus.h"
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -40,6 +38,7 @@ static const char MESSAGE[] = "Hello, World!\n";
 
 static int port = 59995;
 static struct timeval loop_dly = {3,0};
+static char *buscfg_file = NULL;
 
 static void listener_cb(struct evconnlistener *, evutil_socket_t,
     struct sockaddr *, int socklen, void *);
@@ -59,11 +58,18 @@ usage (int err)
 Usage: %s OPTION ...\n\
 Options:\n\
 -p|--port #  Use port # instead of %d.\n\
+-c|--cfg  #  Use configuration file #.\n\
 -l|--loop #  Check ports every # seconds instead of %g.\n\
 -h|--help    Print this message.\n\
 \n", __progname, port, loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 	}
 	exit (err);
+}
+
+int list_bus_debug(struct _bus *bus, void *priv)
+{
+	printf("%d: %s:%s %d:%d:%d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->byte_offset,bus->bit_offset,bus->bits);
+	return 0;
 }
 
 int
@@ -90,13 +96,14 @@ main(int argc, char **argv)
 		/* Defintions of all posible options */
 		static struct option long_options[] = {
 			{"port", 1, 0, 'p'},
+			{"config", 1, 0, 'c'},
 			{"help", 0, 0, 'h'},
 			{"loop", 1, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "hp:l:",
+		while((opt= getopt_long (argc, argv, "c:hp:l:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
 			case 'p':
@@ -106,6 +113,9 @@ main(int argc, char **argv)
 					exit(1);
 				}
 				port=p;
+				break;
+			case 'c':
+				buscfg_file = optarg;
 				break;
 			case 'l':
 				d = strtod(optarg, &ep);
@@ -130,8 +140,9 @@ main(int argc, char **argv)
 	WSAStartup(0x0201, &wsa_data);
 #endif
 
-#ifndef DEMO
-	KbusOpen();
+	bus_init_data(buscfg_file);
+#ifdef DEMO
+	bus_enum(list_bus_debug,NULL);
 #endif
 
 	base = event_base_new();
@@ -165,13 +176,9 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-#ifndef DEMO
-	KbusUpdate();
-#endif
+	bus_sync();
 	event_base_dispatch(base);
-#ifndef DEMO
-	KbusClose();
-#endif
+	bus_free_data();
 
 	evconnlistener_free(listener);
 	event_free(signal_event);
@@ -232,8 +239,7 @@ timer_cb(evutil_socket_t sig, short events, void *user_data)
 {
 #ifdef DEMO
 	printf("Loop.\n");
-#else
-	KbusUpdate();
 #endif
+	bus_sync();
 }
 
