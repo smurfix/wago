@@ -102,16 +102,16 @@ main(int argc, char **argv)
 
 		/* Defintions of all posible options */
 		static struct option long_options[] = {
-			{"port", 1, 0, 'p'},
 			{"config", 1, 0, 'c'},
 			{"debug", 0, 0, 'D'},
 			{"help", 0, 0, 'h'},
 			{"loop", 1, 0, 'l'},
+			{"port", 1, 0, 'p'},
 			{0, 0, 0, 0}
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "c:hp:l:",
+		while((opt= getopt_long (argc, argv, "c:Dhl:p:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
 			case 'D':
