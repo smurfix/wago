@@ -39,11 +39,13 @@
 static const char MESSAGE[] = "Hello, World!\n";
 
 static int port = 59995;
+static struct timeval loop_dly = {3,0};
 
 static void listener_cb(struct evconnlistener *, evutil_socket_t,
     struct sockaddr *, int socklen, void *);
 static void conn_eventcb(struct bufferevent *, short, void *);
 static void signal_cb(evutil_socket_t, short, void *);
+static void timer_cb(evutil_socket_t, short, void *);
 
 extern char *__progname; /* from uClibc */
 static void
@@ -69,6 +71,7 @@ main(int argc, char **argv)
 	struct event_base *base;
 	struct evconnlistener *listener;
 	struct event *signal_event;
+	struct event *timer_event;
 
 	struct sockaddr_in sin;
 #ifdef _WIN32
@@ -115,6 +118,10 @@ main(int argc, char **argv)
 	WSAStartup(0x0201, &wsa_data);
 #endif
 
+#ifndef DEMO
+	KbusOpen();
+#endif
+
 	base = event_base_new();
 	if (!base) {
 		fprintf(stderr, "Could not initialize libevent: %m\n");
@@ -136,16 +143,27 @@ main(int argc, char **argv)
 	}
 
 	signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
-
 	if (!signal_event || event_add(signal_event, NULL)<0) {
 		fprintf(stderr, "Could not create/add a signal event: %m\n");
 		return 1;
 	}
+	timer_event = event_new(base, -1, EV_TIMEOUT|EV_PERSIST, timer_cb, NULL);
+	if (!timer_event || event_add(timer_event, &loop_dly)<0) {
+		fprintf(stderr, "Could not create/add a timer event: %m\n");
+		return 1;
+	}
 
+#ifndef DEMO
+	KbusUpdate();
+#endif
 	event_base_dispatch(base);
+#ifndef DEMO
+	KbusClose();
+#endif
 
 	evconnlistener_free(listener);
 	event_free(signal_event);
+	event_free(timer_event);
 	event_base_free(base);
 
 	printf("done\n");
@@ -196,3 +214,12 @@ signal_cb(evutil_socket_t sig, short events, void *user_data)
 
 	event_base_loopexit(base, &delay);
 }
+
+static void
+timer_cb(evutil_socket_t sig, short events, void *user_data)
+{
+#ifndef DEMO
+	KbusUpdate();
+#endif
+}
+
