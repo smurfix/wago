@@ -91,7 +91,7 @@ main(int argc, char **argv)
 
 	base = event_base_new();
 	if (!base) {
-		fprintf(stderr, "Could not initialize libevent!\n");
+		fprintf(stderr, "Could not initialize libevent: %m\n");
 		return 1;
 	}
 
@@ -105,14 +105,14 @@ main(int argc, char **argv)
 	    sizeof(sin));
 
 	if (!listener) {
-		fprintf(stderr, "Could not create a listener!\n");
+		fprintf(stderr, "Could not create a listener: %m\n");
 		return 1;
 	}
 
 	signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
 
 	if (!signal_event || event_add(signal_event, NULL)<0) {
-		fprintf(stderr, "Could not create/add a signal event!\n");
+		fprintf(stderr, "Could not create/add a signal event: %m\n");
 		return 1;
 	}
 
@@ -135,7 +135,7 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
 
 	bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
 	if (!bev) {
-		fprintf(stderr, "Error constructing bufferevent!");
+		fprintf(stderr, "Error constructing bufferevent: %m");
 		event_base_loopbreak(base);
 		return;
 	}
