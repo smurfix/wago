@@ -5,11 +5,12 @@ wago access
 This program runs on a Wago Linux controller.
 Its job is to export the external inputs and outputs in a controlled fashion.
 
-It implements the following features:
+It implements the following features (in parentheses: the commands in
+question):
 
- * read inputs
+ * read inputs (i)
  
- * write outputs
+ * read and write outputs (s c I)
  
  * set or clear an output for a pre-set time
 
@@ -48,4 +49,32 @@ uClibc is available from Wago.
 For libevent2, download the source and configure as
 
 	sh configure LDFLAGS=-Wl,-elf2flt CC=/usr/local/bin/arm-uclinux-elf-gcc --host=arm-uclinux-elf --disable-openssl --disable-thread-support --disable-malloc-replacement --disable-shared --prefix=/usr/local/arm-linux-uclibc/
+
+The line protocol
+=================
+
+The interface to the daemon consists of a simple command/response
+protocol.
+
+Commands are single letters. They might have (a fixed number of) arguments.
+
+Responses are each introduced with a single special character:
+
+ *  A spontaneous one-line message, not in response to a command.
+
+ +  a single-line positive response.
+    Depending on the command, it may include data.
+
+ +! A positive response which starts with a number.
+    That number will be used to identify future signals.
+
+ ?  A single-line negative response, indicating an error.
+
+ =  a multi-line response, terminated by a single dot. (cf. SMTP.)
+    Used primarily for help messages.
+
+ !  a signal. The first parameter is the signal number. Further
+    parameters depend on the type of signal requested.
+
+ !- indicates that a signal has been cleared.
 
