@@ -267,13 +267,13 @@ static const char std_help_i[] = "=\
 i A B  read a bit on input port A, offset B.\n\
 .\n";
 static const char std_help_I[] = "=\
-i A B  read the state of bit on output port A, offset B.\n\
+I A B  read the state of bit on output port A, offset B.\n\
 .\n";
 static const char std_help_s[] = "=\
-i A B  set a bit on output port A, offset B.\n\
+s A B  set a bit on output port A, offset B.\n\
 .\n";
 static const char std_help_c[] = "=\
-i A B  clear a bit on output port A, offset B.\n\
+c A B  clear a bit on output port A, offset B.\n\
 .\n";
 static const char std_help_D[] = "=\
 D  dump port list (human-readbale version).\n\
