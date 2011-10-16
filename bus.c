@@ -31,6 +31,7 @@ int bus_init_data(const char *fn)
 #else
 	if(fn == NULL)
 		fn = "/proc/driver/kbus/config.csv";
+
 	KbusOpen();
 #endif
 

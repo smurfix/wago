@@ -34,7 +34,13 @@
 #include <event2/util.h>
 #include <event2/event.h>
 
-static const char MESSAGE[] = "Hello, World!\n";
+static char debug = 
+#ifdef DEMO
+	1
+#else
+	0
+#endif
+		;
 
 static int port = 59995;
 static struct timeval loop_dly = {3,0};
@@ -59,9 +65,10 @@ Usage: %s OPTION ...\n\
 Options:\n\
 -p|--port #  Use port # instead of %d.\n\
 -c|--cfg  #  Use configuration file #.\n\
+-D|--debug   Toggle debugging (default %s).\n\
 -l|--loop #  Check ports every # seconds instead of %g.\n\
 -h|--help    Print this message.\n\
-\n", __progname, port, loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
+\n", __progname, port, debug?"on":"off", loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 	}
 	exit (err);
 }
@@ -97,6 +104,7 @@ main(int argc, char **argv)
 		static struct option long_options[] = {
 			{"port", 1, 0, 'p'},
 			{"config", 1, 0, 'c'},
+			{"debug", 0, 0, 'D'},
 			{"help", 0, 0, 'h'},
 			{"loop", 1, 0, 'l'},
 			{0, 0, 0, 0}
@@ -106,6 +114,9 @@ main(int argc, char **argv)
 		while((opt= getopt_long (argc, argv, "c:hp:l:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
+			case 'D':
+				debug = !debug;
+				break;
 			case 'p':
 				p = strtoul(optarg, &ep, 10);
 				if(!*optarg || *ep || p>65535 || p==0 ) {
@@ -141,9 +152,8 @@ main(int argc, char **argv)
 #endif
 
 	bus_init_data(buscfg_file);
-#ifdef DEMO
-	bus_enum(list_bus_debug,NULL);
-#endif
+	if (debug)
+		bus_enum(list_bus_debug,NULL);
 
 	base = event_base_new();
 	if (!base) {
@@ -206,7 +216,7 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
 	bufferevent_enable(bev, EV_WRITE);
 	bufferevent_disable(bev, EV_READ);
 
-	bufferevent_write(bev, MESSAGE, strlen(MESSAGE));
+	//bufferevent_write(bev, MESSAGE, strlen(MESSAGE));
 }
 
 static void
@@ -237,9 +247,8 @@ signal_cb(evutil_socket_t sig, short events, void *user_data)
 static void
 timer_cb(evutil_socket_t sig, short events, void *user_data)
 {
-#ifdef DEMO
-	printf("Loop.\n");
-#endif
+	if(debug)
+		printf("Loop.\n");
 	bus_sync();
 }
 
