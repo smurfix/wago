@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+#include <unistd.h>
 #ifndef _WIN32
 #include <netinet/in.h>
 # ifdef _XOPEN_SOURCE_EXTENDED
@@ -34,6 +35,8 @@
 #include <event2/util.h>
 #include <event2/event.h>
 
+const char *MSG_HELLO = "*WAGO ready.\n";
+
 char debug = 
 #ifdef DEMO
 	1
@@ -49,8 +52,10 @@ static char *buscfg_file = NULL;
 static void listener_cb(struct evconnlistener *, evutil_socket_t,
     struct sockaddr *, int socklen, void *);
 static void conn_eventcb(struct bufferevent *, short, void *);
+static void conn_readcb(struct bufferevent *, void *);
 static void signal_cb(evutil_socket_t, short, void *);
 static void timer_cb(evutil_socket_t, short, void *);
+static int interface_setup(struct event_base *base, evutil_socket_t fd);
 
 extern char *__progname; /* from uClibc */
 static void
@@ -86,6 +91,7 @@ main(int argc, char **argv)
 	struct evconnlistener *listener;
 	struct event *signal_event;
 	struct event *timer_event;
+	char listen_stdin = 0;
 
 	struct sockaddr_in sin;
 #ifdef _WIN32
@@ -103,6 +109,7 @@ main(int argc, char **argv)
 		/* Defintions of all posible options */
 		static struct option long_options[] = {
 			{"config", 1, 0, 'c'},
+			{"stdin", 0, 0, 'd'},
 			{"debug", 0, 0, 'D'},
 			{"help", 0, 0, 'h'},
 			{"loop", 1, 0, 'l'},
@@ -111,9 +118,12 @@ main(int argc, char **argv)
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "c:Dhl:p:",
+		while((opt= getopt_long (argc, argv, "c:dDhl:p:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
+			case 'd':
+				listen_stdin = 1;
+				break;
 			case 'D':
 				debug = !debug;
 				break;
@@ -161,6 +171,15 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+	if (listen_stdin) {
+		if (debug)
+			printf("Listening on stdin.\n");
+		if (interface_setup(base,fileno(stdin)) < 0) {
+			fprintf(stderr, "Could not listen on stdio: %m\n");
+			return 1;
+		}
+	}
+
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
@@ -204,29 +223,105 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
     struct sockaddr *sa, int socklen, void *user_data)
 {
 	struct event_base *base = user_data;
-	struct bufferevent *bev;
 
-	bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
-	if (!bev) {
-		fprintf(stderr, "Error constructing bufferevent: %m");
-		event_base_loopbreak(base);
-		return;
+	if(debug)
+		printf("New connection: fd %d\n",fd);
+
+	if(interface_setup(base,fd) < 0) {
+		fprintf(stderr,"Could not setup interface: %m");
+		close(fd);
 	}
-	bufferevent_setcb(bev, NULL, NULL, conn_eventcb, NULL);
-	bufferevent_enable(bev, EV_WRITE);
-	bufferevent_disable(bev, EV_READ);
+}
 
-	//bufferevent_write(bev, MESSAGE, strlen(MESSAGE));
+static int
+interface_setup(struct event_base *base, evutil_socket_t fd)
+{
+	struct bufferevent *bev;
+	bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
+	if (bev == NULL)
+		return -1;
+
+	bufferevent_setcb(bev, conn_readcb, NULL, conn_eventcb, NULL);
+
+	bufferevent_write(bev, MSG_HELLO, strlen(MSG_HELLO));
+	bufferevent_enable(bev, EV_READ);
+	return 0;
+}
+
+static const char std_help[] = "=\
+Known functions:\n\
+h  send help messages\n\
+\n\
+Send 'hX' for help on function X.\n\
+.\n";
+static const char std_help_h[] = "=\
+h  send a generic help message, list functions\n\
+hX send specific help on function X\n\
+.\n";
+static const char std_help_unknown[] = "=\
+You requested help on an unknown function.\n\
+Send 'h' for a list of known functions.\n\
+.\n";
+
+static void
+send_help(struct evbuffer *out, char h)
+{
+	switch(h) {
+	case 0:
+		evbuffer_add(out,std_help,sizeof(std_help)-1);
+		break;
+	case 'h':
+		evbuffer_add(out,std_help_h,sizeof(std_help_h)-1);
+		break;
+	default:
+		evbuffer_add(out,std_help_unknown,sizeof(std_help_unknown)-1);
+		break;
+	}
+}
+
+static void
+parse_input(struct bufferevent *bev, const char *line)
+{
+	struct evbuffer *out = bufferevent_get_output(bev);
+
+	switch(*line) {
+	case 'h':
+		send_help(out,line[1]);
+		break;
+	case 0:
+		evbuffer_add_printf(out,"?Empty line. Help with 'h'.\n");
+		break;
+	default:
+		evbuffer_add_printf(out,"?Unknown character: '%c'. Help with 'h'.\n",*line);
+		break;
+	}
+}
+
+static void
+conn_readcb(struct bufferevent *bev, void *user_data)
+{
+	struct evbuffer *buf = bufferevent_get_input(bev);
+	while(1) {
+		char *line;
+		size_t len;
+
+		line = evbuffer_readln(buf, &len, EVBUFFER_EOL_CRLF);
+		if (line == NULL)
+			break;
+		if(debug)
+			printf("Read on %d: %s.\n", bufferevent_getfd(bev),line);
+		parse_input(bev,line);
+		free(line);
+	}
 }
 
 static void
 conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 {
 	if (events & BEV_EVENT_EOF) {
-		printf("Connection closed.\n");
+		printf("Connection %d closed.\n", bufferevent_getfd(bev));
 	} else if (events & BEV_EVENT_ERROR) {
-		printf("Got an error on the connection: %s\n",
-		    strerror(errno));/*XXX win32*/
+		printf("Got an error on connection %d: %m\n", bufferevent_getfd(bev));
 	}
 	/* None of the other events can happen here, since we haven't enabled
 	 * timeouts */
