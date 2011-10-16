@@ -250,11 +250,12 @@ interface_setup(struct event_base *base, evutil_socket_t fd)
 
 static const char std_help[] = "=\
 Known functions:\n\
-h     send help messages\n\
+h     print help messages\n\
 i A B read bit from input port A, pos B\n\
 I A B report bit from output port A, pos B\n\
 s A B set bit at output port A, pos B\n\
 c A B clear bit at output port A, pos B\n\
+D     dump port info\n\
 \n\
 Send 'hX' for help on function X.\n\
 .\n";
@@ -273,6 +274,9 @@ i A B  set a bit on output port A, offset B.\n\
 .\n";
 static const char std_help_c[] = "=\
 i A B  clear a bit on output port A, offset B.\n\
+.\n";
+static const char std_help_D[] = "=\
+D  dump port list (human-readbale version).\n\
 .\n";
 static const char std_help_unknown[] = "=\
 You requested help on an unknown function (%d).\n\
@@ -301,6 +305,9 @@ send_help(struct evbuffer *out, char h)
 	case 'c':
 		evbuffer_add(out,std_help_c,sizeof(std_help_c)-1);
 		break;
+	case 'D':
+		evbuffer_add(out,std_help_D,sizeof(std_help_D)-1);
+		break;
 	default:
 		evbuffer_add_printf(out,std_help_unknown, h);
 		break;
@@ -315,6 +322,32 @@ parse_input(struct bufferevent *bev, const char *line)
 	int res = 0;
 
 	switch(*line) {
+	case 'D':
+		{
+			FILE *fd = bus_description(); 
+			int len;
+			char fbuf[4096],*pbuf;
+			char cont = 0;
+			if (fd == NULL) {
+				evbuffer_add_printf(out,"?Could not open description: %m\n");
+				break;
+			}
+
+			evbuffer_add_printf(out,"=port data\n");
+			while(1) {
+				pbuf = fgets(fbuf,sizeof(fbuf),fd);
+				if (pbuf == NULL)
+					break;
+				len = strlen(pbuf);
+				if (!cont && *pbuf == '.')
+					evbuffer_add(out,".",1);
+				evbuffer_add(out,pbuf,len);
+				cont = pbuf[len-1] != '\n';
+			}
+			fclose(fd);
+			evbuffer_add(out,".\n",2);
+		}
+		break;
 	case 'i':
 	case 'I':
 	case 's':

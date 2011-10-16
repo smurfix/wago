@@ -1,6 +1,8 @@
 #ifndef BUS_H
 #define BUS_H
 
+#include <stdio.h>
+
 /* Bus descriptor */
 enum bus_type {
 	BUS_UNKNOWN,
@@ -17,6 +19,9 @@ struct _bus {
 /* Initialize/free data */
 int bus_init_data(const char *fn);
 void bus_free_data();
+
+/* return a file with data describing the bus */
+FILE *bus_description(void);
 
 /* Enumerate the bus. Return something != 0 to break the enumerator loop. */
 typedef int (*bus_enum_fn)(struct _bus *bus, void *priv);

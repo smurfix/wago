@@ -22,6 +22,7 @@ struct _bus_priv {
 	struct _bus_priv *next;
 };
 static struct _bus_priv *bus_list = NULL;
+static const char *bus_file = NULL;
 
 /* Initialize/free data */
 int bus_init_data(const char *fn)
@@ -31,9 +32,12 @@ int bus_init_data(const char *fn)
 #ifdef DEMO
 	if(fn == NULL)
 		return 0;
+	bus_file = strdup(fn);
 #else
-	if(fn == NULL)
+	if(fn == NULL) {
 		fn = "/proc/driver/kbus/config.csv";
+		bus_file = "/proc/driver/kbus/config";
+	}
 
 	KbusOpen();
 #endif
@@ -89,6 +93,14 @@ void bus_free_data()
 #ifndef DEMO
 	KbusClose();
 #endif
+}
+
+/* return a file with data describing the bus */
+FILE *bus_description(void)
+{
+	if (bus_file == NULL)
+		bus_file = "/dev/null";
+	return fopen(bus_file,"r");
 }
 
 
