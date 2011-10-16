@@ -34,7 +34,7 @@
 #include <event2/util.h>
 #include <event2/event.h>
 
-static char debug = 
+char debug = 
 #ifdef DEMO
 	1
 #else

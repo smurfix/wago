@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+
+extern char debug;
 
 // cat /proc/driver/kbus/config.csv 
 //line      ??      ??      rboff   woffset wwidth
@@ -127,31 +130,80 @@ void bus_sync()
 
 
 /* check if this bit is on the bus for reading/writing */
-int bus_is_read_bit(short port,short offset)
+int _bus_is_rw_bit(short *_port,short *_offset, enum bus_type typ)
 {
+	struct _bus_priv *bus;
+	short port = *_port;
+	short offset = *_offset;
+
+	for(bus = bus_list; bus; bus = bus->next) {
+		if (bus->bus.typ != typ)
+			continue;
+
+		if (port != bus->bus.byte_offset)
+			continue;
+
+		if (offset < bus->bus.bit_offset)
+			continue;
+		if (offset >= bus->bus.bit_offset+bus->bus.bits)
+			continue;
+
+		if (offset > 7) {
+			*_port = port + (offset>>3);
+			*_offset = offset & 7;
+		}
+		return 0;
+	}
+		
+	errno = -EINVAL;
 	return -1;
 }
 
-int bus_is_write_bit(short port,short offset)
+int bus_is_read_bit(short *port,short *offset)
 {
-	return -1;
+	return _bus_is_rw_bit(port,offset,BUS_BITS_IN);
+}
+int bus_is_write_bit(short *port,short *offset)
+{
+	return _bus_is_rw_bit(port,offset,BUS_BITS_OUT);
 }
 
 
 /* read a bit, or return a bit's write status */
-char bus_read_bit(short port,short offset)
+char _bus_read_bit(short port,short offset)
 {
-	return -1;
+	char res = 0;
+#ifndef DEMO
+	res = (pstPabIN->uc.Pab[port] & (1<<offset)) ? 1 : 0;
+#endif
+	if(debug)
+		printf("    bit %d:%d = %d\n", port,offset, res);
+	return res;
 }
 
-char bus_read_wbit(short port,short offset)
+char _bus_read_wbit(short port,short offset)
 {
-	return -1;
+	char res = 0;
+#ifndef DEMO
+	res = (pstPabOUT->uc.Pab[port] & (1<<offset)) ? 1 : 0;
+#endif
+	if(debug)
+		printf("   wbit %d:%d = %d\n", port,offset, res);
+	return res;
 }
 
 
 /* write a bit */
-void bus_write_bit(short port,short offset, char value)
+void _bus_write_bit(short port,short offset, char value)
 {
+	if(debug)
+		printf("Set bit %d:%d = %d\n", port,offset, value);
+#ifndef DEMO
+	if (value) {
+		pstPabOUT->uc.Pab[port] |= 1<<offset;
+	} else {
+		pstPabOUT->uc.Pab[port] &= ~(1<<offset);
+	}
+#endif
 }
 
