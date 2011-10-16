@@ -155,7 +155,8 @@ int _bus_is_rw_bit(short *_port,short *_offset, enum bus_type typ)
 		return 0;
 	}
 		
-	errno = -EINVAL;
+	if(debug) printf("Check %d %d for %s FAILED\n",port,offset,bus_typname(typ));
+	errno = EINVAL;
 	return -1;
 }
 

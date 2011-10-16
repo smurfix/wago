@@ -17,10 +17,10 @@ LIBS=-levent
 
 all: wago.bflt wago
 
-%.ao: %.c
+%.ao: %.c *.h
 	$(ACC) $(ACFLAGS) -c -o $@ $<
 
-%.o: %.c
+%.o: %.c *.h
 	$(CC) -DDEBUG $(CFLAGS) -c -o $@ $<
 
 wago: $(OBJ)

@@ -250,7 +250,11 @@ interface_setup(struct event_base *base, evutil_socket_t fd)
 
 static const char std_help[] = "=\
 Known functions:\n\
-h  send help messages\n\
+h     send help messages\n\
+i A B read bit from input port A, pos B\n\
+I A B report bit from output port A, pos B\n\
+s A B set bit at output port A, pos B\n\
+c A B clear bit at output port A, pos B\n\
 \n\
 Send 'hX' for help on function X.\n\
 .\n";
@@ -258,8 +262,20 @@ static const char std_help_h[] = "=\
 h  send a generic help message, list functions\n\
 hX send specific help on function X\n\
 .\n";
+static const char std_help_i[] = "=\
+i A B  read a bit on input port A, offset B.\n\
+.\n";
+static const char std_help_I[] = "=\
+i A B  read the state of bit on output port A, offset B.\n\
+.\n";
+static const char std_help_s[] = "=\
+i A B  set a bit on output port A, offset B.\n\
+.\n";
+static const char std_help_c[] = "=\
+i A B  clear a bit on output port A, offset B.\n\
+.\n";
 static const char std_help_unknown[] = "=\
-You requested help on an unknown function.\n\
+You requested help on an unknown function (%d).\n\
 Send 'h' for a list of known functions.\n\
 .\n";
 
@@ -273,8 +289,20 @@ send_help(struct evbuffer *out, char h)
 	case 'h':
 		evbuffer_add(out,std_help_h,sizeof(std_help_h)-1);
 		break;
+	case 'i':
+		evbuffer_add(out,std_help_i,sizeof(std_help_i)-1);
+		break;
+	case 'I':
+		evbuffer_add(out,std_help_I,sizeof(std_help_I)-1);
+		break;
+	case 's':
+		evbuffer_add(out,std_help_s,sizeof(std_help_s)-1);
+		break;
+	case 'c':
+		evbuffer_add(out,std_help_c,sizeof(std_help_c)-1);
+		break;
 	default:
-		evbuffer_add(out,std_help_unknown,sizeof(std_help_unknown)-1);
+		evbuffer_add_printf(out,std_help_unknown, h);
 		break;
 	}
 }
@@ -283,8 +311,56 @@ static void
 parse_input(struct bufferevent *bev, const char *line)
 {
 	struct evbuffer *out = bufferevent_get_output(bev);
+	int p1,p2;
+	int res = 0;
 
 	switch(*line) {
+	case 'i':
+	case 'I':
+	case 's':
+	case 'c':
+		if(sscanf(line+1,"%d %d",&p1,&p2) != 2) {
+			evbuffer_add_printf(out,"?'%c' needs two numeric parameters.\n",*line);
+			break;
+		}
+		switch(*line) {
+		case 'i':
+			bus_sync();
+			res = bus_read_bit(p1,p2);
+			if(res < 0) {
+				evbuffer_add_printf(out,"?error: %m\n");
+				break;
+			}
+			evbuffer_add_printf(out,"+%d\n",res);
+			break;
+		case 'I':
+			res = bus_read_wbit(p1,p2);
+			if(res < 0) {
+				evbuffer_add_printf(out,"?error: %m\n");
+				break;
+			}
+			evbuffer_add_printf(out,"+%d\n",res);
+			break;
+		case 's':
+			res = bus_write_bit(p1,p2,1);
+			if(res < 0) {
+				evbuffer_add_printf(out,"?error: %m\n");
+				break;
+			}
+			bus_sync();
+			evbuffer_add_printf(out,"+Set.\n");
+			break;
+		case 'c':
+			res = bus_write_bit(p1,p2,0);
+			if(res < 0) {
+				evbuffer_add_printf(out,"?error: %m\n");
+				break;
+			}
+			bus_sync();
+			evbuffer_add_printf(out,"+Cleared.\n");
+			break;
+		}
+		break;
 	case 'h':
 		send_help(out,line[1]);
 		break;

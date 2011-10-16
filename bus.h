@@ -24,7 +24,7 @@ int bus_enum(bus_enum_fn, void *priv);
 const char *bus_typname(enum bus_type typ);
 
 /* sync bus state */
-void bus_sync();
+void bus_sync(void);
 
 /* check if this bit is on the bus for reading/writing.
    This may modify its input values, so call exactly once.
@@ -37,15 +37,15 @@ int bus_is_write_bit(short *port,short *offset);
 /* The function version does not check for validity: check manually; for use in timer loops. */
 char _bus_read_bit(short port,short offset);
 char _bus_read_wbit(short port,short offset);
-#define bus_read_bit(_p,_o,_v) ({\
+#define bus_read_bit(_p,_o) ({\
 		short p = (_p); \
 		short o = (_o); \
-		(bus_is_read_bit(&p,&o) ? _bus_read_bit(p,o,(_v)) : -1)\
+		((bus_is_read_bit(&p,&o) == 0) ? _bus_read_bit(p,o) : -1); \
 	})
-#define bus_read_wbit(_p,_o,_v) ({\
+#define bus_read_wbit(_p,_o) ({\
 		short p = (_p); \
 		short o = (_o); \
-		(bus_is_write_bit(&p,&o) ? _bus_read_wbit(p,o,(_v)) : -1)\
+		((bus_is_write_bit(&p,&o) == 0) ? _bus_read_wbit(p,o) : -1); \
 	})
 
 /* write a bit */
@@ -53,7 +53,7 @@ void _bus_write_bit(short port,short offset, char value);
 #define bus_write_bit(_p,_o,_v) ({ \
 		short p = (_p); \
 		short o = (_o); \
-		(bus_is_write_bit(&p,&o) ? _bus_write_bit(p,o,(v)),0 : -1)\
+		((bus_is_write_bit(&p,&o) == 0) ? _bus_write_bit(p,o,(_v)),0 : -1); \
 	})
 
 #endif
