@@ -59,8 +59,9 @@ usage (int err)
 Usage: %s OPTION ...\n\
 Options:\n\
 -p|--port #  Use port # instead of %d.\n\
+-l|--loop #  Check ports every # seconds instead of %g.\n\
 -h|--help    Print this message.\n\
-\n", __progname,  port);
+\n", __progname, port, loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 	}
 	exit (err);
 }
@@ -82,6 +83,7 @@ main(int argc, char **argv)
 		int opt;
 		char *ep;
 		unsigned long p;
+		double d;
 
 		int option_index = 0;
 
@@ -89,11 +91,12 @@ main(int argc, char **argv)
 		static struct option long_options[] = {
 			{"port", 1, 0, 'p'},
 			{"help", 0, 0, 'h'},
+			{"loop", 1, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "hp:",
+		while((opt= getopt_long (argc, argv, "hp:l:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
 			case 'p':
@@ -103,6 +106,15 @@ main(int argc, char **argv)
 					exit(1);
 				}
 				port=p;
+				break;
+			case 'l':
+				d = strtod(optarg, &ep);
+				if(!*optarg || *ep || d>100000 || d < 0.00099) {
+					fprintf(stderr, "'%s' is not a valid timer value. The timer needs to be >0.001 and <100000.\n", optarg);
+					exit(1);
+				}
+				loop_dly.tv_sec = (int)d;
+				loop_dly.tv_usec = (int)((d-loop_dly.tv_sec)*1000000);
 				break;
 			case 'h':
 				usage(0);
@@ -218,7 +230,9 @@ signal_cb(evutil_socket_t sig, short events, void *user_data)
 static void
 timer_cb(evutil_socket_t sig, short events, void *user_data)
 {
-#ifndef DEMO
+#ifdef DEMO
+	printf("Loop.\n");
+#else
 	KbusUpdate();
 #endif
 }
