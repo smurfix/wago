@@ -41,6 +41,24 @@ static void listener_cb(struct evconnlistener *, evutil_socket_t,
 static void conn_eventcb(struct bufferevent *, short, void *);
 static void signal_cb(evutil_socket_t, short, void *);
 
+extern char *__progname; /* from uClibc */
+static void
+usage (int err)
+{
+	if (err != 0) {
+		fprintf (stderr, "Usage: %s OPTION ...\n", __progname);
+		fprintf (stderr, "Try `%s --help' for more information.\n", __progname);
+	} else {
+		fprintf (stdout, "\
+Usage: %s OPTION ...\n\
+Options:\n\
+-p|--port #  Use port # instead of %d.\n\
+-h|--help    Print this message.\n\
+\n", __progname,  port);
+	}
+	exit (err);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -63,11 +81,12 @@ main(int argc, char **argv)
 		/* Defintions of all posible options */
 		static struct option long_options[] = {
 			{"port", 1, 0, 'p'},
+			{"help", 0, 0, 'h'},
 			{0, 0, 0, 0}
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "p:",
+		while((opt= getopt_long (argc, argv, "hp:",
 						long_options, &option_index)) >= 0) {
 			switch (opt) {
 			case 'p':
@@ -78,6 +97,9 @@ main(int argc, char **argv)
 				}
 				port=p;
 				break;
+			case 'h':
+				usage(0);
+				exit(0);
 			default:
 				return -1;
 			}
