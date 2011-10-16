@@ -58,7 +58,17 @@ main(int argc, char **argv)
 		char *ep;
 		unsigned long p;
 
-		while((opt=getopt(argc,argv,"p:")) >= 0) {
+		int option_index = 0;
+
+		/* Defintions of all posible options */
+		static struct option long_options[] = {
+			{"port", 1, 0, 'p'},
+			{0, 0, 0, 0}
+		};
+		
+		/* Identify all  options */
+		while((opt= getopt_long (argc, argv, "p:",
+						long_options, &option_index)) >= 0) {
 			switch (opt) {
 			case 'p':
 				p = strtoul(optarg, &ep, 10);
