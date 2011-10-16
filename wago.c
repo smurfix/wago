@@ -101,7 +101,7 @@ main(int argc, char **argv)
 			switch (opt) {
 			case 'p':
 				p = strtoul(optarg, &ep, 10);
-				if(!*optarg || *ep || port>65535 || port==0 ) {
+				if(!*optarg || *ep || p>65535 || p==0 ) {
 					fprintf(stderr, "'%s' is not a valid port. Port numbers need to be >0 and <65536.\n", optarg);
 					exit(1);
 				}
