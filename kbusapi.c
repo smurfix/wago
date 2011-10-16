@@ -38,14 +38,19 @@
 
 #include "kbusapi.h"
 
+volatile T_PabVarUnion * pstPabOUT = PABOUT;
+volatile T_PabVarUnion * pstPabIN = PABIN;
+
 int iFD;
 
+#if 0 // not used
 static void modifyPABforEffect(void)
 { 
   pstPabOUT->us.Pab[0] = pstPabOUT->us.Pab[0] << 1;
   if(pstPabOUT->us.Pab[0] > 0xFFF) pstPabOUT->us.Pab[0] = 1; 
   return;
 }
+#endif
 
 // -------------------------------------------------------------------------------
 /// Oeffnet einen Kanal zum Kbus-Treiber und initialisert die Bibliothek.

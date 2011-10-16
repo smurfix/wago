@@ -34,8 +34,8 @@ typedef union
 
 #define PABIN (volatile T_PabVarUnion *) 0xFFE060;
 #define PABOUT (volatile T_PabVarUnion *) (0xFFE060+sizeof(T_PabVarUnion));
-static volatile T_PabVarUnion * pstPabOUT = PABOUT;
-static volatile T_PabVarUnion * pstPabIN = PABIN;
+extern volatile T_PabVarUnion * pstPabOUT;
+extern volatile T_PabVarUnion * pstPabIN;
 
 extern int KbusOpen(void);
 extern int KbusUpdate(void);
