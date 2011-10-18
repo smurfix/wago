@@ -175,7 +175,7 @@ main(int argc, char **argv)
 
 	base = event_base_new();
 	if (!base) {
-		fprintf(stderr, "Could not initialize libevent: %m\n");
+		fprintf(stderr, "Could not initialize libevent: %s\n",strerror(errno));
 		return 1;
 	}
 
@@ -183,7 +183,7 @@ main(int argc, char **argv)
 		if (debug)
 			printf("Listening on stdin.\n");
 		if (interface_setup(base,fileno(stdin)) < 0) {
-			fprintf(stderr, "Could not listen on stdio: %m\n");
+			fprintf(stderr, "Could not listen on stdio: %s\n",strerror(errno));
 			return 1;
 		}
 	}
@@ -198,18 +198,18 @@ main(int argc, char **argv)
 	    sizeof(sin));
 
 	if (!listener) {
-		fprintf(stderr, "Could not create a listener: %m\n");
+		fprintf(stderr, "Could not create a listener: %s\n",strerror(errno));
 		return 1;
 	}
 
 	signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
 	if (!signal_event || event_add(signal_event, NULL)<0) {
-		fprintf(stderr, "Could not create/add a signal event: %m\n");
+		fprintf(stderr, "Could not create/add a signal event: %s\n",strerror(errno));
 		return 1;
 	}
 	timer_event = event_new(base, -1, EV_TIMEOUT|EV_PERSIST, timer_cb, NULL);
 	if (!timer_event || event_add(timer_event, &loop_dly)<0) {
-		fprintf(stderr, "Could not create/add a timer event: %m\n");
+		fprintf(stderr, "Could not create/add a timer event: %s\n",strerror(errno));
 		return 1;
 	}
 
@@ -236,7 +236,7 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
 		printf("New connection: fd %d\n",fd);
 
 	if(interface_setup(base,fd) < 0) {
-		fprintf(stderr,"Could not setup interface: %m");
+		fprintf(stderr,"Could not setup interface: %s",strerror(errno));
 		close(fd);
 	}
 }
@@ -342,7 +342,7 @@ parse_input(struct bufferevent *bev, const char *line)
 			char fbuf[4096],*pbuf;
 			char cont = 0;
 			if (fd == NULL) {
-				evbuffer_add_printf(out,"?Could not open description: %m\n");
+				evbuffer_add_printf(out,"?Could not open description: %s\n",strerror(errno));
 				break;
 			}
 
@@ -376,7 +376,7 @@ parse_input(struct bufferevent *bev, const char *line)
 			bus_sync();
 			res = bus_read_bit(p1,p2);
 			if(res < 0) {
-				evbuffer_add_printf(out,"?error: %m\n");
+				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 				break;
 			}
 			evbuffer_add_printf(out,"+%d\n",res);
@@ -384,7 +384,7 @@ parse_input(struct bufferevent *bev, const char *line)
 		case 'I':
 			res = bus_read_wbit(p1,p2);
 			if(res < 0) {
-				evbuffer_add_printf(out,"?error: %m\n");
+				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 				break;
 			}
 			evbuffer_add_printf(out,"+%d\n",res);
@@ -392,7 +392,7 @@ parse_input(struct bufferevent *bev, const char *line)
 		case 's':
 			res = bus_write_bit(p1,p2,1);
 			if(res < 0) {
-				evbuffer_add_printf(out,"?error: %m\n");
+				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 				break;
 			}
 			bus_sync();
@@ -401,7 +401,7 @@ parse_input(struct bufferevent *bev, const char *line)
 		case 'c':
 			res = bus_write_bit(p1,p2,0);
 			if(res < 0) {
-				evbuffer_add_printf(out,"?error: %m\n");
+				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 				break;
 			}
 			bus_sync();
@@ -445,7 +445,7 @@ conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 	if (events & BEV_EVENT_EOF) {
 		printf("Connection %d closed.\n", bufferevent_getfd(bev));
 	} else if (events & BEV_EVENT_ERROR) {
-		printf("Got an error on connection %d: %m\n", bufferevent_getfd(bev));
+		printf("Got an error on connection %d: %s\n", bufferevent_getfd(bev), strerror(errno));
 	}
 	/* None of the other events can happen here, since we haven't enabled
 	 * timeouts */
