@@ -141,44 +141,48 @@ void bus_sync()
 }
 
 
-/* check if this bit is on the bus for reading/writing */
-int _bus_is_rw_bit(short *_port,short *_offset, enum bus_type typ)
+/* check if this bit is on the bus */
+int _bus_find_bit(short *_port,short *_offset, enum bus_type typ)
 {
 	struct _bus_priv *bus;
 	short port = *_port;
 	short offset = *_offset;
 
 	for(bus = bus_list; bus; bus = bus->next) {
-		if (bus->bus.typ != typ)
+		if (bus->bus.id != port)
 			continue;
 
-		if (port != bus->bus.byte_offset)
-			continue;
-
-		if (offset < bus->bus.bit_offset)
-			continue;
-		if (offset >= bus->bus.bit_offset+bus->bus.bits)
-			continue;
-
-		if (offset > 7) {
-			*_port = port + (offset>>3);
-			*_offset = offset & 7;
+		if (bus->bus.typ != typ) {
+			errno = EINVAL;
+			if(debug) printf("Check %d %d for %s FAILED: wrong device\n",port,offset,bus_typname(typ));
+			return -1;
 		}
+
+		if (offset >= bus->bus.bits) {
+			errno = EINVAL;
+			if(debug) printf("Check %d %d for %s FAILED: max %d bits\n",port,offset,bus_typname(typ), bus->bus.bits);
+			return -1;
+		}
+
+		offset += bus->bus.bit_offset;
+		*_port = bus->bus.byte_offset + (offset>>3);
+		*_offset = offset & 7;
 		return 0;
 	}
 		
-	if(debug) printf("Check %d %d for %s FAILED\n",port,offset,bus_typname(typ));
-	errno = EINVAL;
+	if(debug) printf("Check %d %d for %s FAILED: ID not found\n",port,offset,bus_typname(typ));
+	errno = ENODEV;
 	return -1;
 }
 
 int bus_is_read_bit(short *port,short *offset)
 {
-	return _bus_is_rw_bit(port,offset,BUS_BITS_IN);
+	return _bus_find_bit(port,offset,BUS_BITS_IN);
 }
+
 int bus_is_write_bit(short *port,short *offset)
 {
-	return _bus_is_rw_bit(port,offset,BUS_BITS_OUT);
+	return _bus_find_bit(port,offset,BUS_BITS_OUT);
 }
 
 
