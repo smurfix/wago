@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
 #ifndef _WIN32
@@ -57,6 +58,11 @@ static void signal_cb(evutil_socket_t, short, void *);
 static void timer_cb(evutil_socket_t, short, void *);
 static int interface_setup(struct event_base *base, evutil_socket_t fd);
 
+static struct event_base *base = NULL;
+static struct evconnlistener *listener = NULL;
+static struct event *signal_event = NULL;
+static struct event *timer_event = NULL;
+
 extern char *__progname; /* from uClibc */
 static void
 usage (int err)
@@ -92,13 +98,16 @@ static int list_bus_debug(struct _bus *bus, void *priv)
 	return 0;
 }
 
+static void
+set_loop_timer(float d)
+{
+	loop_dly.tv_sec = (int)d;
+	loop_dly.tv_usec = (int)((d-loop_dly.tv_sec)*1000000);
+}
+
 int
 main(int argc, char **argv)
 {
-	struct event_base *base;
-	struct evconnlistener *listener;
-	struct event *signal_event;
-	struct event *timer_event;
 	char listen_stdin = 0;
 
 	struct sockaddr_in sin;
@@ -110,7 +119,7 @@ main(int argc, char **argv)
 		int opt;
 		char *ep;
 		unsigned long p;
-		double d;
+		float d;
 
 		int option_index = 0;
 
@@ -147,13 +156,12 @@ main(int argc, char **argv)
 				buscfg_file = optarg;
 				break;
 			case 'l':
-				d = strtod(optarg, &ep);
+				d = strtof(optarg, &ep);
 				if(!*optarg || *ep || d>100000 || d < 0.00099) {
 					fprintf(stderr, "'%s' is not a valid timer value. The timer needs to be >0.001 and <100000.\n", optarg);
 					exit(1);
 				}
-				loop_dly.tv_sec = (int)d;
-				loop_dly.tv_usec = (int)((d-loop_dly.tv_sec)*1000000);
+				set_loop_timer(d);
 				break;
 			case 'h':
 				usage(0);
@@ -263,6 +271,7 @@ i A B read bit from input port A, pos B\n\
 I A B report bit from output port A, pos B\n\
 s A B set bit at output port A, pos B\n\
 c A B clear bit at output port A, pos B\n\
+d     set/query poll delay\n\
 D     dump port info\n\
 \n\
 Send 'hX' for help on function X.\n\
@@ -270,6 +279,10 @@ Send 'hX' for help on function X.\n\
 static const char std_help_h[] = "=\
 h  send a generic help message, list functions\n\
 hX send specific help on function X\n\
+.\n";
+static const char std_help_d[] = "=\
+d   report current poll frequency (seconds).\n\
+d X set poll frequency to X.\n\
 .\n";
 static const char std_help_i[] = "=\
 i A B  read a bit on input port A, offset B.\n\
@@ -302,6 +315,9 @@ send_help(struct evbuffer *out, char h)
 	case 'h':
 		evbuffer_add(out,std_help_h,sizeof(std_help_h)-1);
 		break;
+	case 'd':
+		evbuffer_add(out,std_help_d,sizeof(std_help_d)-1);
+		break;
 	case 'i':
 		evbuffer_add(out,std_help_i,sizeof(std_help_i)-1);
 		break;
@@ -328,6 +344,7 @@ parse_input(struct bufferevent *bev, const char *line)
 {
 	struct evbuffer *out = bufferevent_get_output(bev);
 	int p1,p2;
+	float p3;
 	int res = 0;
 
 	switch(*line) {
@@ -361,6 +378,26 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add(out,".\n",2);
 		} else {
 			evbuffer_add_printf(out,"?Unknown subcommand: '%c'. Help with 'hD'.\n",line[1]);
+		}
+		break;
+	case 'd':
+		if (line[1]) {
+			if(sscanf(line+1,"%g",&p3) != 1) {
+				evbuffer_add_printf(out,"?d needs a float parameter.\n");
+				break;
+			}
+			if(p3>100000 || p3 < 0.00099) {
+				evbuffer_add_printf(out,"?not a valid timer parameter, 0.001 < DELAY < 10000.\n");
+				break;
+			}
+			set_loop_timer(p3);
+			if (event_del(timer_event) || event_add(timer_event, &loop_dly)<0) {
+				evbuffer_add_printf(out,"?changing the timer failed: %s\n",strerror(errno));
+				break;
+			}
+			evbuffer_add_printf(out,"+Loop timer changed.\n");
+		} else {
+			evbuffer_add_printf(out,"+%g seconds per loop.\n", loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 		}
 		break;
 	case 'i':
