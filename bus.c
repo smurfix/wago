@@ -191,7 +191,9 @@ int bus_is_write_bit(short *port,short *offset)
 char _bus_read_bit(short port,short offset)
 {
 	char res = 0;
-#ifndef DEMO
+#ifdef DEMO
+	res = (rand() < RAND_MAX/10);
+#else
 	res = (pstPabIN->uc.Pab[port] & (1<<offset)) ? 1 : 0;
 #endif
 	if(debug)
