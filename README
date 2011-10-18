@@ -5,8 +5,7 @@ wago access
 This program runs on a Wago Linux controller.
 Its job is to export the external inputs and outputs in a controlled fashion.
 
-It implements the following features (in parentheses: the commands in
-question):
+It implements the following features (in parentheses: the commands in question; no command means TODO):
 
  * read inputs (i)
  
@@ -24,20 +23,24 @@ as well as some auxiliary functions
 
  * measure controller's cycle time
 
- * set program's poll time
+ * set program's poll time (d)
 
  * (re)initialize outputs, in case of network outage
 
  * keepalive messages and timer
 
- * report the kernel-exported CSV list of I/O fields
+ * report the kernel-exported CSV list of I/O fields (D)
 
 The controller has a 3 msec debounce filter on its input. The minimum sensible cycle time therefore is 2 msec.
 If you know that no input will change faster than once a second, increasing the timer values will save some power
 and allow the program to react faster (since it usually doesn't need to wait for the controller to finish processing
 its input+output list).
 
-There can be at most one active server connection. A challenge/response mechanism is used to authorize the remote side.
+There can be more than one active server connection.
+Monitors, re-inits and keepalives are specific to the connection they have been issued on.
+
+A challenge/response mechanism is used to authorize the remote side.
+
 
 Building and installing
 =======================
