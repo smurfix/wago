@@ -143,11 +143,11 @@ void bus_sync()
 
 
 /* check if this bit is on the bus */
-int _bus_find_bit(short *_port,short *_offset, enum bus_type typ)
+int _bus_find_bit(unsigned short *_port,unsigned short *_offset, enum bus_type typ)
 {
 	struct _bus_priv *bus;
-	short port = *_port;
-	short offset = *_offset;
+	unsigned short port = *_port;
+	unsigned short offset = *_offset;
 
 	for(bus = bus_list; bus; bus = bus->next) {
 		if (bus->bus.id != port)
@@ -176,19 +176,19 @@ int _bus_find_bit(short *_port,short *_offset, enum bus_type typ)
 	return -1;
 }
 
-int bus_is_read_bit(short *port,short *offset)
+int bus_is_read_bit(unsigned short *port,unsigned short *offset)
 {
 	return _bus_find_bit(port,offset,BUS_BITS_IN);
 }
 
-int bus_is_write_bit(short *port,short *offset)
+int bus_is_write_bit(unsigned short *port,unsigned short *offset)
 {
 	return _bus_find_bit(port,offset,BUS_BITS_OUT);
 }
 
 
 /* read a bit, or return a bit's write status */
-char _bus_read_bit(short port,short offset)
+char _bus_read_bit(unsigned short port,unsigned short offset)
 {
 	char res = 0;
 #ifdef DEMO
@@ -201,7 +201,7 @@ char _bus_read_bit(short port,short offset)
 	return res;
 }
 
-char _bus_read_wbit(short port,short offset)
+char _bus_read_wbit(unsigned short port,unsigned short offset)
 {
 	char res = 0;
 #ifndef DEMO
@@ -214,7 +214,7 @@ char _bus_read_wbit(short port,short offset)
 
 
 /* write a bit */
-void _bus_write_bit(short port,short offset, char value)
+void _bus_write_bit(unsigned short port,unsigned short offset, char value)
 {
 	if(debug)
 		printf("Set bit %d:%d = %d\n", port,offset, value);

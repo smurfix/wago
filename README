@@ -16,9 +16,9 @@ question):
 
  * periodically set+clear an output (Pulse Width Modulation)
 
- * send a notification whenever an input changes
+ * send a notification whenever an input changes (m+)
 
- * count input transitions, with report timer (i.e. don't send a network message at every transition)
+ * count input transitions, with report timer (i.e. don't send a network message at every transition) (m#)
 
 as well as some auxiliary functions
 

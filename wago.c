@@ -28,7 +28,9 @@
 #endif
 #include <getopt.h>
 
+#include "wago.h"
 #include "bus.h"
+#include "mon.h"
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
@@ -36,7 +38,7 @@
 #include <event2/util.h>
 #include <event2/event.h>
 
-const char *MSG_HELLO = "*WAGO ready.\n";
+const char *MSG_HELLO = "* WAGO ready.\n";
 
 char debug = 
 #ifdef DEMO
@@ -58,7 +60,7 @@ static void signal_cb(evutil_socket_t, short, void *);
 static void timer_cb(evutil_socket_t, short, void *);
 static int interface_setup(struct event_base *base, evutil_socket_t fd);
 
-static struct event_base *base = NULL;
+struct event_base *base = NULL;
 static struct evconnlistener *listener = NULL;
 static struct event *signal_event = NULL;
 static struct event *timer_event = NULL;
@@ -82,6 +84,14 @@ Options:\n\
 \n", __progname, port, debug?"on":"off", loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 	}
 	exit (err);
+}
+
+static int report_mon(struct _mon *mon, void *priv)
+{
+	struct evbuffer *out = (struct evbuffer *)priv;
+
+	evbuffer_add_printf(out, "%d %s: %d:%d\n", mon->id, mon_typname(mon->typ), mon->port,mon->offset);
+	return 0;
 }
 
 static int report_bus(struct _bus *bus, void *priv)
@@ -271,6 +281,7 @@ i A B read bit from input port A, pos B\n\
 I A B report bit from output port A, pos B\n\
 s A B set bit at output port A, pos B\n\
 c A B clear bit at output port A, pos B\n\
+m     monitor a bit (see help for subcommands)\n\
 d     set/query poll delay\n\
 D     dump port info\n\
 \n\
@@ -283,6 +294,15 @@ hX send specific help on function X\n\
 static const char std_help_d[] = "=\
 d   report current poll frequency (seconds).\n\
 d X set poll frequency to X.\n\
+.\n";
+static const char std_help_m[] = "=\
+m          list current monitor records.\n\
+m+ A B D   report changes of bit on input port A, offset B.\n\
+           D is + - * for positive, negative, or both edges.\n\
+		   The command replies with a monitor ID.\n\
+m# A B D I count changes, report at most every I seconds.\n\
+		   The command replies with a monitor ID.\n\
+m- X       delete change monitor with monitor ID X.\n\
 .\n";
 static const char std_help_i[] = "=\
 i A B  read a bit on input port A, offset B.\n\
@@ -317,6 +337,9 @@ send_help(struct evbuffer *out, char h)
 		break;
 	case 'd':
 		evbuffer_add(out,std_help_d,sizeof(std_help_d)-1);
+		break;
+	case 'm':
+		evbuffer_add(out,std_help_m,sizeof(std_help_m)-1);
 		break;
 	case 'i':
 		evbuffer_add(out,std_help_i,sizeof(std_help_i)-1);
@@ -398,6 +421,57 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add_printf(out,"+Loop timer changed.\n");
 		} else {
 			evbuffer_add_printf(out,"+%g seconds per loop.\n", loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
+		}
+		break;
+	case 'm':
+		if(line[1] == 0) {
+			evbuffer_add_printf(out,"=Monitors:\n");
+			mon_enum(report_mon, out);
+			evbuffer_add(out,".\n",2);
+		} else if(line[1] == '+' || line[1] == '#') {
+			unsigned char edge;
+			enum mon_type typ;
+			int mon_id;
+			int res = sscanf(line+2,"%d %d %c %f",&p1,&p2,&edge,&p3);
+			if (res < 3) {
+				evbuffer_add_printf(out,"?'m%c' needs two numeric and one char parameters.\n",line[1]);
+				break;
+			}
+			if (res < 4)
+				p3 = 1000;
+
+			switch(edge) {
+			case '+':
+				typ = (line[1] == '+' ? MON_REPORT_H : MON_COUNT_H);
+				break;
+			case '-':
+				typ = (line[1] == '+' ? MON_REPORT_L : MON_COUNT_L);
+				break;
+			case '*':
+				typ = (line[1] == '+' ? MON_REPORT : MON_COUNT);
+				break;
+			default:
+				evbuffer_add_printf(out,"?'m%c' last parameter must be one of + - *\n",line[1]);
+				return;
+			}
+			mon_id = mon_new(typ,p1,p2, bev, (int)(1000*p3));
+			if(mon_id < 1) {
+				evbuffer_add_printf(out,"?'m%c' error creating monitor: %s\n",line[1],strerror(errno));
+				return;
+			}
+			evbuffer_add_printf(out,"+%d monitor created\n",mon_id);
+		} else if(line[1] == '-') {
+			if(sscanf(line+2,"%d",&p1) != 1) {
+				evbuffer_add_printf(out,"?'m-' needs two numeric and one char parameters.\n");
+				return;
+			}
+			if(mon_del(p1) < 0) {
+				evbuffer_add_printf(out,"?'m-' error deleting monitor %d: %s\n",p1,strerror(errno));
+				return;
+			}
+			evbuffer_add_printf(out,"+Monitor %d deleted.\n",p1);
+		} else {
+			evbuffer_add_printf(out,"?Unknown subcommand: '%c'. Help with 'hm'.\n",line[1]);
 		}
 		break;
 	case 'i':
@@ -486,6 +560,7 @@ conn_eventcb(struct bufferevent *bev, short events, void *user_data)
 	}
 	/* None of the other events can happen here, since we haven't enabled
 	 * timeouts */
+	mon_delbuf(bev);
 	bufferevent_free(bev);
 }
 
@@ -506,5 +581,6 @@ timer_cb(evutil_socket_t sig, short events, void *user_data)
 	if(debug)
 		printf("Loop.\n");
 	bus_sync();
+	mon_sync();
 }
 
