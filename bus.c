@@ -52,7 +52,7 @@ int bus_init_data(const char *fn)
 		int roff,rboff,rsiz;
 		int woff,wboff,wsiz;
 		int len = fscanf(f,"%d %10s %d %d %2s %d %d %d %d %d %d\n",
-			&i,devtyp,&x1,&bits,x3, &roff,&rboff,&rsiz, &woff,&wboff,&wsiz);
+			&i,devtyp,&x1,&bits,x3, &woff,&wboff,&wsiz, &roff,&rboff,&rsiz);
 		if (len == 0)
 			break;
 		if (len != 11) {
@@ -68,12 +68,12 @@ int bus_init_data(const char *fn)
 		dev->bus.id = i;
 		strcpy(dev->bus.typname,devtyp);
 
-		if(!strcmp(devtyp,"750-4xx")) { // digital output
+		if(!strcmp(devtyp,"750-5xx")) { // digital output
 			dev->bus.typ = BUS_BITS_OUT;
 			dev->bus.byte_offset = woff;
 			dev->bus.bit_offset = wboff;
 			dev->bus.bits = wsiz;
-		} else if(!strcmp(devtyp,"750-5xx")) { // digital output
+		} else if(!strcmp(devtyp,"750-4xx")) { // digital output
 			dev->bus.typ = BUS_BITS_IN;
 			dev->bus.byte_offset = roff;
 			dev->bus.bit_offset = rboff;
