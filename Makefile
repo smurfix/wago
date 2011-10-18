@@ -17,6 +17,11 @@ LIBS=-levent
 
 all: wago.bflt wago
 
+w: wago.bflt
+	-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago1 . wago.bflt
+	#-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago2 . wago.bflt
+	#-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago3 . wago.bflt
+
 %.ao: %.c *.h
 	$(ACC) $(ACFLAGS) -c -o $@ $<
 
