@@ -82,13 +82,13 @@ static int report_bus(struct _bus *bus, void *priv)
 {
 	struct evbuffer *out = (struct evbuffer *)priv;
 
-	evbuffer_add_printf(out, "%d: %s:%s %d:%d:%d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->byte_offset,bus->bit_offset,bus->bits);
+	evbuffer_add_printf(out, "%d: %s:%s %d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->bits);
 	return 0;
 }
 
 static int list_bus_debug(struct _bus *bus, void *priv)
 {
-	printf("%d: %s:%s %d:%d:%d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->byte_offset,bus->bit_offset,bus->bits);
+	printf("%d: %s:%s %d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->bits);
 	return 0;
 }
 

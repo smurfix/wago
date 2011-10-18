@@ -20,6 +20,7 @@ struct _bus_priv;
 struct _bus_priv {
 	struct _bus bus;
 	struct _bus_priv *next;
+	unsigned char byte_offset, bit_offset;
 };
 static struct _bus_priv *bus_list = NULL;
 static const char *bus_file = NULL;
@@ -70,13 +71,13 @@ int bus_init_data(const char *fn)
 
 		if(!strcmp(devtyp,"750-5xx")) { // digital output
 			dev->bus.typ = BUS_BITS_OUT;
-			dev->bus.byte_offset = woff;
-			dev->bus.bit_offset = wboff;
+			dev->byte_offset = woff;
+			dev->bit_offset = wboff;
 			dev->bus.bits = wsiz;
 		} else if(!strcmp(devtyp,"750-4xx")) { // digital output
 			dev->bus.typ = BUS_BITS_IN;
-			dev->bus.byte_offset = roff;
-			dev->bus.bit_offset = rboff;
+			dev->byte_offset = roff;
+			dev->bit_offset = rboff;
 			dev->bus.bits = rsiz;
 		} else {
 			dev->bus.typ = BUS_UNKNOWN;
@@ -164,8 +165,8 @@ int _bus_find_bit(short *_port,short *_offset, enum bus_type typ)
 			return -1;
 		}
 
-		offset += bus->bus.bit_offset;
-		*_port = bus->bus.byte_offset + (offset>>3);
+		offset += bus->bit_offset;
+		*_port = bus->byte_offset + (offset>>3);
 		*_offset = offset & 7;
 		return 0;
 	}

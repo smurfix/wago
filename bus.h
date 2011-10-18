@@ -12,7 +12,8 @@ enum bus_type {
 #define BUS_TYPNAME_LEN 10
 struct _bus {
 	enum bus_type typ;
-	unsigned char id, byte_offset, bit_offset, bits;
+	unsigned char id;
+	unsigned char bits;
 	char typname[BUS_TYPNAME_LEN];
 };
 
