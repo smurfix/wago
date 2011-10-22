@@ -98,7 +98,33 @@ static int report_bus(struct _bus *bus, void *priv)
 {
 	struct evbuffer *out = (struct evbuffer *)priv;
 
-	evbuffer_add_printf(out, "%d: %s:%s %d\n", bus->id,bus_typname(bus->typ),bus->typname, bus->bits);
+	evbuffer_add_printf(out, "%d: %s:%s %d", bus->id,bus_typname(bus->typ),bus->typname, bus->bits);
+	int i;
+	signed char j;
+	switch (bus->typ) {
+	case BUS_BITS_IN:
+		evbuffer_add(out, " <=",3);
+		for(i=1; i <= bus->bits; i++) {
+			if ((i%5) == 1) evbuffer_add(out, " ",1);
+			j = bus_read_bit(bus->id,i);
+			evbuffer_add(out, (j < 0) ? "?" : j ? "1" : "0", 1);
+		}
+		
+		break;
+	case BUS_BITS_OUT:
+		evbuffer_add(out, " =>",3);
+		for(i=1; i <= bus->bits; i++) {
+			if ((i%5) == 1) evbuffer_add(out, " ",1);
+			j = bus_read_wbit(bus->id,i);
+			evbuffer_add(out, (j < 0) ? "?" : j ? "1" : "0", 1);
+		}
+
+		break;
+	default:
+		/* don't know what to do */
+		break;
+	}
+	evbuffer_add(out, "\n",1);
 	return 0;
 }
 
