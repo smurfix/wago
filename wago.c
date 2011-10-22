@@ -367,7 +367,7 @@ parse_input(struct bufferevent *bev, const char *line)
 {
 	struct evbuffer *out = bufferevent_get_output(bev);
 	int p1,p2;
-	float p3;
+	float p3,p4;
 	int res = 0;
 
 	switch(*line) {
@@ -432,13 +432,15 @@ parse_input(struct bufferevent *bev, const char *line)
 			unsigned char edge;
 			enum mon_type typ;
 			int mon_id;
-			int res = sscanf(line+2,"%d %d %c %f",&p1,&p2,&edge,&p3);
+			int res = sscanf(line+2,"%d %d %c %f %f",&p1,&p2,&edge,&p3,&p4);
 			if (res < 3) {
 				evbuffer_add_printf(out,"?'m%c' needs two numeric and one char parameters.\n",line[1]);
 				break;
 			}
 			if (res < 4)
 				p3 = 1000;
+			if (res < 5)
+				p4 = 1000;
 
 			switch(edge) {
 			case '+':
@@ -454,7 +456,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				evbuffer_add_printf(out,"?'m%c' last parameter must be one of + - *\n",line[1]);
 				return;
 			}
-			mon_id = mon_new(typ,p1,p2, bev, (int)(1000*p3));
+			mon_id = mon_new(typ,p1,p2, bev, (int)(1000*p3),(int)(1000*p4));
 			if(mon_id < 1) {
 				evbuffer_add_printf(out,"?'m%c' error creating monitor: %s\n",line[1],strerror(errno));
 				return;

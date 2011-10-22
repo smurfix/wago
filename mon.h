@@ -6,12 +6,27 @@
 /* Monitor descriptor */
 enum mon_type {
 	MON_UNKNOWN,
+
+	/* report input changes */
 	MON_REPORT,
 	MON_REPORT_H,
 	MON_REPORT_L,
+
+	/* count input changes */
 	MON_COUNT,
 	MON_COUNT_H,
 	MON_COUNT_L,
+
+	/* Marker; above are inputs, below are outputs */
+	_MON_UNKNOWN_OUT,
+
+	/* set for a pre-determined time */
+	MON_SET_ONCE,
+	MON_CLEAR_ONCE,
+
+	/* switch between set and clear */
+	MON_SET_LOOP,
+	MON_CLEAR_LOOP,
 };
 
 struct _mon {
@@ -20,7 +35,8 @@ struct _mon {
 	unsigned char port,offset;
 };
 
-int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct bufferevent *buf, unsigned int msec);
+int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct bufferevent *buf,
+	unsigned int msec1, unsigned int msec2);
 int mon_del(int id);
 void mon_delbuf(struct bufferevent *buf);
 
