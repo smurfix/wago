@@ -48,6 +48,11 @@ char debug =
 #endif
 		;
 
+#ifdef DEMO
+char demo_state_r = 0;
+char demo_state_w = 0;
+#endif
+
 static int port = 59995;
 static struct timeval loop_dly = {3,0};
 static char *buscfg_file = NULL;
@@ -351,8 +356,12 @@ c A B I J … then set for J seconds, repeat.\n\
 .\n";
 static const char std_help_D[] = "=\
 D  dump port list (human-readable version).\n\
-Dp dump port list (parsed list).\n\
-.\n";
+Dp dump port list (parsed list).\n";
+static const char std_help_D2[] = "\
+Ds Read-port read conmmands will read H.\n\
+Dc Read-port read conmmands will read L.\n\
+DS Write-port read conmmands will read H.\n\
+DS Write-port read conmmands will read L.\n";
 static const char std_help_unknown[] = "=\
 You requested help on an unknown function (%d).\n\
 Send 'h' for a list of known functions.\n\
@@ -388,6 +397,10 @@ send_help(struct evbuffer *out, char h)
 		break;
 	case 'D':
 		evbuffer_add(out,std_help_D,sizeof(std_help_D)-1);
+#ifdef DEMO
+		evbuffer_add(out,std_help_D2,sizeof(std_help_D2)-1);
+#endif
+		evbuffer_add(out,".\n",2);
 		break;
 	default:
 		evbuffer_add_printf(out,std_help_unknown, h);
@@ -409,6 +422,16 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add_printf(out,"=Reporting bus data\n");
 			bus_enum(report_bus, out);
 			evbuffer_add(out,".\n",2);
+#ifdef DEMO
+		} else if(line[1] == 's') {
+			demo_state_r=1;
+		} else if(line[1] == 'c') {
+			demo_state_r=0;
+		} else if(line[1] == 'S') {
+			demo_state_w=1;
+		} else if(line[1] == 'C') {
+			demo_state_w=0;
+#endif
 		} else if (!line[1]) {
 			FILE *fd = bus_description(); 
 			int len;
@@ -495,10 +518,10 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add_printf(out,"+%d monitor created\n",mon_id);
 		} else if(line[1] == '-') {
 			if(sscanf(line+2,"%d",&p1) != 1) {
-				evbuffer_add_printf(out,"?'m-' needs two numeric and one char parameters.\n");
+				evbuffer_add_printf(out,"?'m-' needs a numeric parameter.\n");
 				return;
 			}
-			if(mon_del(p1) < 0) {
+			if(mon_del(p1,bev) < 0) {
 				evbuffer_add_printf(out,"?'m-' error deleting monitor %d: %s\n",p1,strerror(errno));
 				return;
 			}

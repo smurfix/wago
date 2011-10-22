@@ -1,4 +1,5 @@
 
+#include "wago.h"
 #include "bus.h"
 #include "kbusapi.h"
 
@@ -198,6 +199,10 @@ char _bus_read_bit(unsigned short port,unsigned short offset)
 	char res = 0;
 #ifdef DEMO
 	res = (rand() < RAND_MAX/10);
+	if (res)
+		res = 1-demo_state_r;
+	else
+		res = demo_state_r;
 #else
 	res = (pstPabIN->uc.Pab[port] & (1<<offset)) ? 1 : 0;
 #endif
@@ -209,7 +214,13 @@ char _bus_read_bit(unsigned short port,unsigned short offset)
 char _bus_read_wbit(unsigned short port,unsigned short offset)
 {
 	char res = 0;
-#ifndef DEMO
+#ifdef DEMO
+	res = (rand() < RAND_MAX/10);
+	if (res)
+		res = 1-demo_state_w;
+	else
+		res = demo_state_w;
+#else
 	res = (pstPabOUT->uc.Pab[port] & (1<<offset)) ? 1 : 0;
 #endif
 	if(debug)
@@ -223,7 +234,9 @@ void _bus_write_bit(unsigned short port,unsigned short offset, char value)
 {
 	if(debug)
 		printf("Set bit %d:%d = %d\n", port,offset, value);
-#ifndef DEMO
+#ifdef DEMO
+	demo_state_w = value;
+#else
 	if (value) {
 		pstPabOUT->uc.Pab[port] |= 1<<offset;
 	} else {
