@@ -81,18 +81,6 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 	if(typ > _MON_UNKNOWN_OUT) {
 		switch(typ) {
 		case MON_SET_LOOP:
-		case MON_SET_ONCE:
-			_bus_write_bit(_port,_offset, 1);
-			break;
-		case MON_CLEAR_LOOP:
-		case MON_CLEAR_ONCE:
-			_bus_write_bit(_port,_offset, 0);
-			break;
-		default:
-			break;
-		}
-		switch(typ) {
-		case MON_SET_LOOP:
 		case MON_CLEAR_LOOP:
 			mon->delay2.tv_sec = msec2/1000;
 			mon->delay2.tv_usec = 1000*(msec2-1000*mon->delay2.tv_sec);
@@ -110,6 +98,21 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 			free(mon);
 			return -1;
 		}
+		switch(typ) {
+		case MON_SET_LOOP:
+		case MON_SET_ONCE:
+			_bus_write_bit(_port,_offset, 1);
+			mon->state = 1;
+			break;
+		case MON_CLEAR_LOOP:
+		case MON_CLEAR_ONCE:
+			_bus_write_bit(_port,_offset, 0);
+			mon->state = 0;
+			break;
+		default:
+			break;
+		}
+		bus_sync();
 	}
 
 	mon->next = mon_list;
@@ -120,16 +123,21 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 	return mon->mon.id;
 }
 
-static void mon_free(struct _mon_priv *mon)
+static void mon_free(struct _mon_priv *mon, struct bufferevent *buf)
 {
 	if (mon->timer) {
 		event_del(mon->timer);
 		event_free(mon->timer);
 	}
+	if(mon->buf != NULL && mon->buf != buf) {
+		struct evbuffer *out = bufferevent_get_output(mon->buf);
+		evbuffer_add_printf(out, "!-%d Deleted.\n", mon->mon.id);
+	}
+
 	free(mon);
 }
 
-int mon_del(int id)
+int mon_del(int id, struct bufferevent *buf)
 {
 	struct _mon_priv **pmon = &mon_list;
 	while(1) {
@@ -140,7 +148,7 @@ int mon_del(int id)
 		}
 		if (mon->mon.id == id) {
 			*pmon = mon->next;
-			mon_free(mon);
+			mon_free(mon,buf);
 			return 0;
 		}
 		pmon = &mon->next;
@@ -156,7 +164,7 @@ void mon_delbuf(struct bufferevent *buf)
 			return;
 		if (mon->buf == buf) {
 			*pmon = mon->next;
-			mon_free(mon);
+			mon_free(mon,buf);
 		}
 		pmon = &mon->next;
 	}
@@ -227,14 +235,19 @@ once_cb(evutil_socket_t sig, short events, void *user_data)
 
 	if(debug)
 		printf("monitor %d triggers\n", mon->mon.id);
-	_bus_write_bit(mon->_port,mon->_offset, (mon->mon.typ == MON_CLEAR_ONCE));
-	bus_sync();
-	evbuffer_add_printf(out, "!%d TRIGGER\n", mon->mon.id);
+	if (_bus_read_wbit(mon->_port,mon->_offset) == mon->state) {
+		_bus_write_bit(mon->_port,mon->_offset, !mon->state);
+		evbuffer_add_printf(out, "!%d TRIGGER\n", mon->mon.id);
+		bus_sync();
+	} else {
+		evbuffer_add_printf(out, "!-%d Already changed!\n", mon->mon.id);
+		mon->buf = NULL;
+	}
 
 	event_free(mon->timer);
 	mon->timer = NULL;
 
-	mon_del(mon->mon.id);
+	mon_del(mon->mon.id, NULL);
 }
 
 static void
@@ -244,35 +257,33 @@ loop_cb(evutil_socket_t sig, short events, void *user_data)
 	struct evbuffer *out = bufferevent_get_output(mon->buf);
 	struct timeval tv;
 
-	if(mon->mon.typ == MON_CLEAR_LOOP) {
-		if(!_bus_read_wbit(mon->_port,mon->_offset))
-			goto drop_timer;
-		_bus_write_bit(mon->_port,mon->_offset, 1);
-		mon->mon.typ = MON_SET_LOOP;
-	} else {
-		if(_bus_read_wbit(mon->_port,mon->_offset))
-			goto drop_timer;
-		_bus_write_bit(mon->_port,mon->_offset, 0);
-		mon->mon.typ = MON_CLEAR_LOOP;
-	}
-	mon->state = _bus_read_wbit(mon->_port,mon->_offset);
-
-	if(debug)
-		printf("monitor %d toggles: %c\n", mon->mon.id, mon->state ? 'H' : 'L');
-
-	tv = mon->delay;
-	mon->delay = mon->delay2;
-	mon->delay2 = tv;
-	event_add(mon->timer, &mon->delay);
-	return;
-
-drop_timer:
-	event_free(mon->timer);
-	mon->timer = NULL;
-
-	evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
+	if(_bus_read_wbit(mon->_port,mon->_offset) == mon->state) {
+		if(mon->mon.typ == MON_CLEAR_LOOP) {
+			mon->mon.typ = MON_SET_LOOP;
+			mon->state = 1;
+		} else {
+			mon->mon.typ = MON_CLEAR_LOOP;
+			mon->state = 0;
+		}
+		_bus_write_bit(mon->_port,mon->_offset, mon->state);
 	
-	mon_del(mon->mon.id);
+		if(debug)
+			printf("monitor %d toggles: %c\n", mon->mon.id, mon->state ? 'H' : 'L');
+	
+		tv = mon->delay;
+		mon->delay = mon->delay2;
+		mon->delay2 = tv;
+		event_add(mon->timer, &mon->delay);
+
+	} else {
+		event_free(mon->timer);
+		mon->timer = NULL;
+
+		evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
+
+		mon->buf = NULL;
+		mon_del(mon->mon.id, NULL);
+	}
 }
 
 /* check monitor state */
@@ -307,7 +318,8 @@ void mon_sync(void)
 			if(debug)
 				printf("Mon%d: dropped, found %c\n", mon->mon.id, state?'H':'L');
 			evbuffer_add_printf(out, "!-%d DROP %c: saw external change in loop\n", mon->mon.id, state?'H':'L');
-			mon_del(mon->mon.id);
+			mon->buf = NULL;
+			mon_del(mon->mon.id, NULL);
 			break;
 			
 		/* Inputs: change reporting */
