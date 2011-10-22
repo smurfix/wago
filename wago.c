@@ -565,9 +565,12 @@ parse_input(struct bufferevent *bev, const char *line)
 				res = mon_new(p4 ? MON_SET_LOOP : MON_SET_ONCE, p1,p2, bev, (int)(p3*1000),(int)(p4*1000));
 			else
 				res = bus_write_bit(p1,p2,1);
-			if (res < 0)
-				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
-			else if (p3)
+			if (res < 0) {
+				if (errno == EEXIST)
+					evbuffer_add_printf(out,"?already set\n");
+				else
+					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
+			} else if (p3)
 				evbuffer_add_printf(out,"+%d Set, monitor started.\n", res);
 			else
 				evbuffer_add_printf(out,"+Set.\n");
@@ -578,9 +581,12 @@ parse_input(struct bufferevent *bev, const char *line)
 				res = mon_new(p4 ? MON_CLEAR_LOOP : MON_CLEAR_ONCE, p1,p2, bev, (int)(p3*1000),(int)(p4*1000));
 			else
 				res = bus_write_bit(p1,p2,0);
-			if (res < 0)
-				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
-			else if (p3)
+			if (res < 0) {
+				if (errno == EEXIST)
+					evbuffer_add_printf(out,"?already cleared\n");
+				else
+					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
+			} else if (p3)
 				evbuffer_add_printf(out,"+%d Cleared, monitor started.\n", res);
 			else
 				evbuffer_add_printf(out,"+Cleared.\n");
