@@ -142,7 +142,12 @@ void bus_sync()
 }
 
 
-/* check if this bit is on the bus */
+/*
+   Check if this bit is on the bus.
+   Input: Slot number and -based bit position.
+   Output: Byte and bit offset for hardware access.
+   Returns: -1 if invalid oarameters, else 0.
+ */
 int _bus_find_bit(unsigned short *_port,unsigned short *_offset, enum bus_type typ)
 {
 	struct _bus_priv *bus;
@@ -159,13 +164,13 @@ int _bus_find_bit(unsigned short *_port,unsigned short *_offset, enum bus_type t
 			return -1;
 		}
 
-		if (offset >= bus->bus.bits) {
+		if (offset == 0 || offset > bus->bus.bits) {
 			errno = EINVAL;
 			if(debug) printf("Check %d %d for %s FAILED: max %d bits\n",port,offset,bus_typname(typ), bus->bus.bits);
 			return -1;
 		}
 
-		offset += bus->bit_offset;
+		offset += bus->bit_offset-1;
 		*_port = bus->byte_offset + (offset>>3);
 		*_offset = offset & 7;
 		return 0;

@@ -323,6 +323,7 @@ d X set poll frequency to X.\n\
 .\n";
 static const char std_help_m[] = "=\
 m          list current monitor records.\n\
+           This includes timed set/clear commands.\n\
 m+ A B D   report changes of bit on input port A, offset B.\n\
            D is + - * for positive, negative, or both edges.\n\
 		   The command replies with a monitor ID.\n\
@@ -337,10 +338,16 @@ static const char std_help_I[] = "=\
 I A B  read the state of bit on output port A, offset B.\n\
 .\n";
 static const char std_help_s[] = "=\
-s A B  set a bit on output port A, offset B.\n\
+s A B       set a bit on output port A, offset B.\n\
+s A B I   … for I seconds.\n\
+s A B I J … then clear for J seconds, repeat.\n\
+            See monitor subcommands for reporting.\n\
 .\n";
 static const char std_help_c[] = "=\
 c A B  clear a bit on output port A, offset B.\n\
+c A B I   … for I seconds.\n\
+c A B I J … then set for J seconds, repeat.\n\
+            See monitor subcommands for reporting.\n\
 .\n";
 static const char std_help_D[] = "=\
 D  dump port list (human-readable version).\n\
@@ -458,15 +465,13 @@ parse_input(struct bufferevent *bev, const char *line)
 			unsigned char edge;
 			enum mon_type typ;
 			int mon_id;
-			int res = sscanf(line+2,"%d %d %c %f %f",&p1,&p2,&edge,&p3,&p4);
+			int res = sscanf(line+2,"%d %d %c %f",&p1,&p2,&edge,&p3);
 			if (res < 3) {
 				evbuffer_add_printf(out,"?'m%c' needs two numeric and one char parameters.\n",line[1]);
 				break;
 			}
 			if (res < 4)
-				p3 = 1000;
-			if (res < 5)
-				p4 = 1000;
+				p3 = 1;
 
 			switch(edge) {
 			case '+':
@@ -482,7 +487,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				evbuffer_add_printf(out,"?'m%c' last parameter must be one of + - *\n",line[1]);
 				return;
 			}
-			mon_id = mon_new(typ,p1,p2, bev, (int)(1000*p3),(int)(1000*p4));
+			mon_id = mon_new(typ,p1,p2, bev, (int)(p3*1000),0);
 			if(mon_id < 1) {
 				evbuffer_add_printf(out,"?'m%c' error creating monitor: %s\n",line[1],strerror(errno));
 				return;
@@ -506,10 +511,14 @@ parse_input(struct bufferevent *bev, const char *line)
 	case 'I':
 	case 's':
 	case 'c':
-		if(sscanf(line+1,"%d %d",&p1,&p2) != 2) {
-			evbuffer_add_printf(out,"?'%c' needs two numeric parameters.\n",*line);
+		if((res = sscanf(line+1,"%d %d %f %f",&p1,&p2,&p3,&p4)) < 2) {
+			evbuffer_add_printf(out,"?'%c' needs two integer parameters and at most two floats.\n",*line);
 			break;
 		}
+		if (res < 3)
+			p3 = 0;
+		if (res < 4)
+			p4 = 0;
 		switch(*line) {
 		case 'i':
 			bus_sync();
@@ -529,22 +538,30 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add_printf(out,"+%d\n",res);
 			break;
 		case 's':
-			res = bus_write_bit(p1,p2,1);
-			if(res < 0) {
+			if (p3)
+				res = mon_new(p4 ? MON_SET_LOOP : MON_SET_ONCE, p1,p2, bev, (int)(p3*1000),(int)(p4*1000));
+			else
+				res = bus_write_bit(p1,p2,1);
+			if (res < 0)
 				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
-				break;
-			}
+			else if (p3)
+				evbuffer_add_printf(out,"+%d Set, monitor started.\n", res);
+			else
+				evbuffer_add_printf(out,"+Set.\n");
 			bus_sync();
-			evbuffer_add_printf(out,"+Set.\n");
 			break;
 		case 'c':
-			res = bus_write_bit(p1,p2,0);
-			if(res < 0) {
+			if (p3)
+				res = mon_new(p4 ? MON_CLEAR_LOOP : MON_CLEAR_ONCE, p1,p2, bev, (int)(p3*1000),(int)(p4*1000));
+			else
+				res = bus_write_bit(p1,p2,0);
+			if (res < 0)
 				evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
-				break;
-			}
+			else if (p3)
+				evbuffer_add_printf(out,"+%d Cleared, monitor started.\n", res);
+			else
+				evbuffer_add_printf(out,"+Cleared.\n");
 			bus_sync();
-			evbuffer_add_printf(out,"+Cleared.\n");
 			break;
 		}
 		break;
