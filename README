@@ -80,4 +80,6 @@ Responses are each introduced with a single special character:
     parameters depend on the type of signal requested.
 
  !- indicates that a signal has been cleared.
+    For outputs, this means that the port has been changed manually.
+
 
