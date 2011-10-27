@@ -11,7 +11,7 @@
   The original is avaliable under a BSD-3 license.
 */
 
-
+#define _BSD_SOURCE
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -25,6 +25,7 @@
 #  include <arpa/inet.h>
 # endif
 #include <sys/socket.h>
+#include <sys/file.h>
 #endif
 #include <getopt.h>
 
@@ -106,6 +107,7 @@ static int report_bus(struct _bus *bus, void *priv)
 	evbuffer_add_printf(out, "%d: %s:%s %d", bus->id,bus_typname(bus->typ),bus->typname, bus->bits);
 	int i;
 	signed char j;
+
 	switch (bus->typ) {
 	case BUS_BITS_IN:
 		evbuffer_add(out, " <=",3);
@@ -146,10 +148,46 @@ set_loop_timer(float d)
 	loop_dly.tv_usec = (int)((d-loop_dly.tv_sec)*1000000);
 }
 
+void
+background(char * const args[])
+{
+	int fd;
+	switch (vfork()) {
+		case -1:
+			_exit(1);
+		case 0:
+			break;
+		default:
+			_exit(0);
+	}
+
+	if (setsid() == -1)
+		_exit(1);
+
+	if (vfork())
+		_exit(1);
+	if (chdir("/") == -1)
+		_exit(1);
+
+	if ((fd = open("/dev/null", O_RDWR, 0)) == -1)
+		_exit(1);
+	dup2(fd, STDIN_FILENO);
+	dup2(fd, STDOUT_FILENO);
+	dup2(fd, STDERR_FILENO);
+	if (fd > 2)
+		close(fd);
+	
+	execv("/proc/self/exe", args);
+	_exit(1);
+}
+
 int
 main(int argc, char **argv)
 {
 	char listen_stdin = 0;
+#define NARGS 10
+	char * args[NARGS];
+	char **ap = args;
 
 	struct sockaddr_in sin;
 #ifdef _WIN32
@@ -176,8 +214,14 @@ main(int argc, char **argv)
 		};
 		
 		/* Identify all  options */
-		while((opt= getopt_long (argc, argv, "c:dDhl:p:",
+		*ap++ = "wagomon";
+		*ap++ = "-F";
+		while((opt= getopt_long (argc, argv, "c:dDFhl:p:",
 						long_options, &option_index)) >= 0) {
+			if(ap-args > NARGS-3) {
+				fprintf(stderr,"Too many arguments");
+				exit(1);
+			}
 			switch (opt) {
 			case 'd':
 				listen_stdin = 1;
@@ -185,7 +229,12 @@ main(int argc, char **argv)
 			case 'D':
 				debug = !debug;
 				break;
+			case 'F':
+				listen_stdin = -1;
+				break;
 			case 'p':
+				*ap++ = "-p";
+				*ap++ = optarg;
 				p = strtoul(optarg, &ep, 10);
 				if(!*optarg || *ep || p>65535 || p==0 ) {
 					fprintf(stderr, "'%s' is not a valid port. Port numbers need to be >0 and <65536.\n", optarg);
@@ -197,6 +246,8 @@ main(int argc, char **argv)
 				buscfg_file = optarg;
 				break;
 			case 'l':
+				*ap++ = "-p";
+				*ap++ = optarg;
 				d = strtof(optarg, &ep);
 				if(!*optarg || *ep || d>100000 || d < 0.00099) {
 					fprintf(stderr, "'%s' is not a valid timer value. The timer needs to be >0.001 and <100000.\n", optarg);
@@ -211,6 +262,7 @@ main(int argc, char **argv)
 				return -1;
 			}
 		}
+		*ap = NULL;
 	}
 
 
@@ -218,9 +270,15 @@ main(int argc, char **argv)
 	WSAStartup(0x0201, &wsa_data);
 #endif
 
-	bus_init_data(buscfg_file);
-	if (debug)
+	if (debug) {
+		bus_init_data(buscfg_file);
 		bus_enum(list_bus_debug,NULL);
+	} else if(!listen_stdin) {
+		background(args);
+		bus_init_data(buscfg_file);
+	} else {
+		bus_init_data(buscfg_file);
+	}
 
 	base = event_base_new();
 	if (!base) {
@@ -228,7 +286,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	if (listen_stdin) {
+	if (listen_stdin > 0) {
 		if (debug)
 			printf("Listening on stdin.\n");
 		if (interface_setup(base,fileno(stdin)) < 0) {
