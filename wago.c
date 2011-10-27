@@ -184,6 +184,7 @@ background(char * const args[])
 int
 main(int argc, char **argv)
 {
+	int res;
 	char listen_stdin = 0;
 #define NARGS 10
 	char * args[NARGS];
@@ -271,13 +272,18 @@ main(int argc, char **argv)
 #endif
 
 	if (debug) {
-		bus_init_data(buscfg_file);
-		bus_enum(list_bus_debug,NULL);
+		res = bus_init_data(buscfg_file);
+		if(res == 0)
+			bus_enum(list_bus_debug,NULL);
 	} else if(!listen_stdin) {
 		background(args);
-		bus_init_data(buscfg_file);
+		res = bus_init_data(buscfg_file);
 	} else {
-		bus_init_data(buscfg_file);
+		res = bus_init_data(buscfg_file);
+	}
+	if (res < 0) {
+		fprintf(stderr,"Could not init the bus: %s\n",strerror(-res));
+		exit(1);
 	}
 
 	base = event_base_new();
@@ -477,6 +483,7 @@ parse_input(struct bufferevent *bev, const char *line)
 	switch(*line) {
 	case 'D':
 		if (line[1] == 'p') {
+			bus_sync();
 			evbuffer_add_printf(out,"=Reporting bus data\n");
 			bus_enum(report_bus, out);
 			evbuffer_add(out,".\n",2);

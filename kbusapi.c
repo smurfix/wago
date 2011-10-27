@@ -41,7 +41,7 @@
 volatile T_PabVarUnion * pstPabOUT = PABOUT;
 volatile T_PabVarUnion * pstPabIN = PABIN;
 
-int iFD;
+int iFD = -1;
 
 #if 0 // not used
 static void modifyPABforEffect(void)
@@ -65,9 +65,9 @@ int KbusOpen()
 {
   iFD = open("/dev/kbus", O_WRONLY);
   
-  if(iFD < 1) {
+  if(iFD < 0) {
     printf("KBUSAPI: Failed opening fifo for writing: %s", strerror(errno));
-    return errno;
+    return -errno;
   }
   return 0;
 }
@@ -83,11 +83,11 @@ int KbusUpdate()
   int iBytes=0;
   int iTmp;
   
-  if(iFD < 1) return -EINVAL;
+  if(iFD < 0) return -EINVAL;
 
   iBytes = ioctl(iFD, IOCTL_KBUSUPDATE, &iTmp);
-  if (0 >= iBytes)
-    return -EINVAL;
+  if (iBytes < 0)
+    return -errno;
   return 0;
 }
 
@@ -98,11 +98,11 @@ int KbusGetBinaryInputOffset()
   int iBytes = 0;
   int iInputOffset = 0;
   
-  if(iFD < 1) return -EINVAL;
+  if(iFD < 0) return -EINVAL;
 
   iBytes = ioctl(iFD, IOCTL_GETBININPUTOFFSET, &iInputOffset);
-  if (0 >= iBytes)
-    return -EINVAL;
+  if (iBytes < 0)
+    return -errno;
   return iInputOffset;
 }
 
@@ -113,11 +113,11 @@ int KbusGetBinaryOutputOffset()
   int iBytes = 0;
   int iOutputOffset = 0;
   
-  if(iFD < 1) return -EINVAL;
+  if(iFD < 0) return -EINVAL;
 
   iBytes = ioctl(iFD, IOCTL_GETBINOUTPUTOFFSET, &iOutputOffset);
-  if (0 >= iBytes)
-    return -EINVAL;
+  if (iBytes < 0)
+    return -errno;
   return iOutputOffset;
 }
 
@@ -130,6 +130,7 @@ int KbusClose()
 {
   /* Close /dev/kbus */
   close(iFD);
+  iFD = -1;
   return 0;
 }
 

@@ -41,12 +41,14 @@ int bus_init_data(const char *fn)
 		bus_file = "/proc/driver/kbus/config";
 	}
 
-	KbusOpen();
+	res = KbusOpen();
+	if(res < 0)
+		return res;
 #endif
 
 	f = fopen(fn,"r");
 	if (f == NULL)
-		return -1;
+		return -errno;
 	while(1) {
 		struct _bus_priv *dev;
 		char devtyp[BUS_TYPNAME_LEN],x3[3];
@@ -58,12 +60,13 @@ int bus_init_data(const char *fn)
 		if (len == 0)
 			break;
 		if (len != 11) {
-			res = -1;
-			break;
+			if (len > 0)
+				res = -EINVAL;
+			return res;
 		}
 		dev = malloc(sizeof(*dev));
 		if (dev == NULL) {
-			res = -2;
+			res = -errno;
 			break;
 		}
 		memset(dev,0,sizeof(*dev));
