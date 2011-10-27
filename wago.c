@@ -388,7 +388,8 @@ hX send specific help on function X\n\
 .\n";
 static const char std_help_d[] = "=\
 d   report current poll frequency (seconds).\n\
-d X set poll frequency to X.\n\
+dc  report poll delay (seconds).\n\
+d X set poll frequency to X (0.001 < X < 1000 seconds).\n\
 .\n";
 static const char std_help_m[] = "=\
 m          list current monitor records.\n\
@@ -525,7 +526,17 @@ parse_input(struct bufferevent *bev, const char *line)
 		}
 		break;
 	case 'd':
-		if (line[1]) {
+		if (line[1] == 'c') {
+			struct timeval t1,t2;
+			int td;
+			gettimeofday(&t1,NULL);
+			bus_sync();
+			mon_sync();
+			bus_sync();
+			gettimeofday(&t2,NULL);
+			td = (t2.tv_sec-t1.tv_sec)*1000 + (t2.tv_usec-t1.tv_usec)/1000;
+			evbuffer_add_printf(out,"+%d.%03d sec\n",td/1000,td%1000);
+		} else if (line[1]) {
 			if(sscanf(line+1,"%g",&p3) != 1) {
 				evbuffer_add_printf(out,"?d needs a float parameter.\n");
 				break;

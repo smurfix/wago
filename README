@@ -11,9 +11,9 @@ It implements the following features (in parentheses: the commands in question; 
  
  * read and write outputs (s c I)
  
- * set or clear an output for a pre-set time
+ * set or clear an output for a pre-set time (s c)
 
- * periodically set+clear an output (Pulse Width Modulation)
+ * periodically set+clear an output (Pulse Width Modulation) (s c)
 
  * send a notification whenever an input changes (m+)
 
@@ -21,7 +21,7 @@ It implements the following features (in parentheses: the commands in question; 
 
 as well as some auxiliary functions
 
- * measure controller's cycle time
+ * measure controller's cycle time (dc)
 
  * set program's poll time (d)
 
