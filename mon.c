@@ -23,6 +23,7 @@ struct _mon_priv {
 	struct event *timer;
 	struct timeval delay;
 	struct timeval delay2;
+	struct timeval last;
 	unsigned short _port,_offset;
 	unsigned long count;
 	unsigned char state;
@@ -98,6 +99,8 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 			free(mon);
 			return -1;
 		}
+		event_base_gettimeofday_cached(base, &mon->last);
+
 		switch(typ) {
 		case MON_SET_LOOP:
 		case MON_SET_ONCE:
@@ -274,7 +277,7 @@ loop_cb(evutil_socket_t sig, short events, void *user_data)
 		mon->delay = mon->delay2;
 		mon->delay2 = tv;
 		event_add(mon->timer, &mon->delay);
-
+		event_base_gettimeofday_cached(base, &mon->last);
 	} else {
 		event_free(mon->timer);
 		mon->timer = NULL;
@@ -348,6 +351,7 @@ void mon_sync(void)
 					evbuffer_add_printf(out, "!%d %ld\n", mon->mon.id, mon->count);
 					evbuffer_add_printf(out, "* Monitor timeout: error: %s\n", strerror(errno));
 				}
+				event_base_gettimeofday_cached(base, &mon->last);
 			} else {
 				if(debug)
 					printf("Mon%d: %ld\n", mon->mon.id, mon->count);
@@ -369,16 +373,39 @@ void mon_sync(void)
 const char *mon_detail(struct _mon *_mon)
 {
 	struct _mon_priv *mon = (struct _mon_priv *)_mon;
+	char *buf;
+	struct timeval tv;
+	long int t,tu;
+
 	switch(mon->mon.typ) {
 	case MON_COUNT:
 	case MON_COUNT_H:
 	case MON_COUNT_L:
-		{
-			char *buf = malloc(20);
-			if(buf == NULL) return NULL;
-			sprintf(buf,"%ld",mon->count);
-			return buf;
+		buf = malloc(20);
+		if(buf == NULL) return NULL;
+		sprintf(buf,"%ld",mon->count);
+		return buf;
+	case MON_SET_ONCE:
+	case MON_CLEAR_ONCE:
+	case MON_SET_LOOP:
+	case MON_CLEAR_LOOP:
+		buf = malloc(20);
+		if(buf == NULL) return NULL;
+		gettimeofday(&tv, NULL);
+		t = mon->last.tv_sec; tu = mon->last.tv_usec;
+		t += mon->delay.tv_sec; tu += mon->delay.tv_usec;
+		t -= tv.tv_sec; tu -= tv.tv_usec;
+		while (tu < 0) {
+			tu += 1000000;
+			t -= 1;
 		}
+		while (tu >= 1000000) {
+			tu -= 1000000;
+			t += 1;
+		}
+		
+		sprintf(buf,"%ld.%03ld",t,tu/1000);
+		return buf;
 	default:
 		return NULL;
 	
