@@ -48,4 +48,7 @@ const char *mon_typname(enum mon_type typ);
 /* check monitor state */
 void mon_sync(void);
 
+/* report details */
+const char *mon_detail(struct _mon *mon);
+
 #endif

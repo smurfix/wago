@@ -95,8 +95,16 @@ Options:\n\
 static int report_mon(struct _mon *mon, void *priv)
 {
 	struct evbuffer *out = (struct evbuffer *)priv;
+	const char nix[] = "-";
+	const char *det;
 
-	evbuffer_add_printf(out, "%d %s: %d:%d\n", mon->id, mon_typname(mon->typ), mon->port,mon->offset);
+	det = mon_detail(mon);
+	if (det == NULL)
+		det = nix;
+
+	evbuffer_add_printf(out, "%d %s: %d:%d %s\n", mon->id, mon_typname(mon->typ), mon->port,mon->offset, det);
+	if (det != nix)
+		free((char *)det);
 	return 0;
 }
 

@@ -366,3 +366,22 @@ void mon_sync(void)
 	}
 }
 
+const char *mon_detail(struct _mon *_mon)
+{
+	struct _mon_priv *mon = (struct _mon_priv *)_mon;
+	switch(mon->mon.typ) {
+	case MON_COUNT:
+	case MON_COUNT_H:
+	case MON_COUNT_L:
+		{
+			char *buf = malloc(20);
+			if(buf == NULL) return NULL;
+			sprintf(buf,"%ld",mon->count);
+			return buf;
+		}
+	default:
+		return NULL;
+	
+	}
+}
+
