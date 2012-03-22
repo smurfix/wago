@@ -217,6 +217,7 @@ main(int argc, char **argv)
 			{"stdin", 0, 0, 'd'},
 			{"debug", 0, 0, 'D'},
 			{"help", 0, 0, 'h'},
+			{"foreground", 0, 0, 'F'},
 			{"loop", 1, 0, 'l'},
 			{"port", 1, 0, 'p'},
 			{0, 0, 0, 0}
