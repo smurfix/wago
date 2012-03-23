@@ -82,11 +82,13 @@ usage (int err)
 		fprintf (stdout, "\
 Usage: %s OPTION ...\n\
 Options:\n\
--p|--port #  Use port # instead of %d.\n\
--c|--cfg  #  Use configuration file #.\n\
--D|--debug   Toggle debugging (default %s).\n\
--l|--loop #  Check ports every # seconds instead of %g.\n\
--h|--help    Print this message.\n\
+-p|--port #     Use port # instead of %d\n\
+-c|--cfg  #     Use configuration file #\n\
+-D|--debug      Toggle debugging (default %s)\n\
+-d|--stdin      accept commands from the console\n\
+-F|--foreground Don't daemonize.\n\
+-l|--loop #     Check ports every # seconds instead of %g\n\
+-h|--help       Print this message\n\
 \n", __progname, port, debug?"on":"off", loop_dly.tv_sec+loop_dly.tv_usec/1000000.);
 	}
 	exit (err);
