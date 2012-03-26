@@ -258,7 +258,7 @@ main(int argc, char **argv)
 				buscfg_file = optarg;
 				break;
 			case 'l':
-				*ap++ = "-p";
+				*ap++ = "-l";
 				*ap++ = optarg;
 				d = strtof(optarg, &ep);
 				if(!*optarg || *ep || d>100000 || d < 0.00099) {
