@@ -201,7 +201,10 @@ char _bus_read_bit(unsigned short port,unsigned short offset)
 {
 	char res = 0;
 #ifdef DEMO
-	res = (rand() < RAND_MAX/10);
+	if (demo_rand)
+		res = (rand() < RAND_MAX/10);
+	else
+		res = 0;
 	if (res)
 		res = 1-demo_state_r;
 	else
@@ -218,7 +221,10 @@ char _bus_read_wbit(unsigned short port,unsigned short offset)
 {
 	char res = 0;
 #ifdef DEMO
-	res = (rand() < RAND_MAX/10);
+	if (demo_rand)
+		res = (rand() < RAND_MAX/10);
+	else
+		res = 0;
 	if (res)
 		res = 1-demo_state_w;
 	else

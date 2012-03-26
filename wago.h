@@ -7,6 +7,7 @@ extern struct event_base *base;
 extern char debug;
 
 #ifdef DEMO
+extern char demo_rand;
 extern char demo_state_r;
 extern char demo_state_w;
 #endif

@@ -48,6 +48,9 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 			return -1;
 		state = _bus_read_wbit(_port,_offset);
 
+#ifdef DEMO
+		if (demo_state_w==2) { } else 
+#endif
 		if (state) {
 			if (typ == MON_SET_ONCE || typ == MON_SET_LOOP) {
 				errno = EEXIST;
@@ -238,7 +241,11 @@ once_cb(evutil_socket_t sig, short events, void *user_data)
 
 	if(debug)
 		printf("monitor %d triggers\n", mon->mon.id);
-	if (_bus_read_wbit(mon->_port,mon->_offset) == mon->state) {
+	if (
+#ifdef DEMO
+		(demo_state_w == 2) ||
+#endif
+		(_bus_read_wbit(mon->_port,mon->_offset) == mon->state)) {
 		_bus_write_bit(mon->_port,mon->_offset, !mon->state);
 		evbuffer_add_printf(out, "!%d TRIGGER\n", mon->mon.id);
 		bus_sync();
@@ -300,9 +307,13 @@ void mon_sync(void)
 
 		mon2 = mon->next;
 
-		if (mon->mon.typ > _MON_UNKNOWN_OUT)
+		if (mon->mon.typ > _MON_UNKNOWN_OUT) {
+#ifdef DEMO
+			if (demo_state_w==2)
+				continue;
+#endif
 			state = _bus_read_wbit(mon->_port,mon->_offset);
-		else
+		} else
 			state = _bus_read_bit(mon->_port,mon->_offset);
 		if(!state == !mon->state)
 			continue;

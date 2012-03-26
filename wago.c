@@ -50,6 +50,7 @@ char debug =
 		;
 
 #ifdef DEMO
+char demo_rand = 2;
 char demo_state_r = 0;
 char demo_state_w = 0;
 #endif
@@ -434,10 +435,13 @@ static const char std_help_D[] = "=\
 D  dump port list (human-readable version).\n\
 Dp dump port list (parsed list).\n";
 static const char std_help_D2[] = "\
-Ds Read-port read conmmands will read H.\n\
-Dc Read-port read conmmands will read L.\n\
-DS Write-port read conmmands will read H.\n\
-DS Write-port read conmmands will read L.\n";
+Ds Read-port read commands will read H.\n\
+Dc Read-port read commands will read L.\n\
+DS Write-port read commands will read H.\n\
+DC Write-port read commands will read L.\n\
+DI Write-port read commands will read the expected value.\n\
+Dr Port reads are deterministic.\n\
+DR Port reads are 10% likely to read the opposite state.\n";
 static const char std_help_unknown[] = "=\
 You requested help on an unknown function (%d).\n\
 Send 'h' for a list of known functions.\n\
@@ -500,6 +504,10 @@ parse_input(struct bufferevent *bev, const char *line)
 			bus_enum(report_bus, out);
 			evbuffer_add(out,".\n",2);
 #ifdef DEMO
+		} else if(line[1] == 'r') {
+			demo_rand = 0;
+		} else if(line[1] == 'R') {
+			demo_rand = 1;
 		} else if(line[1] == 's') {
 			demo_state_r=1;
 		} else if(line[1] == 'c') {
@@ -508,6 +516,8 @@ parse_input(struct bufferevent *bev, const char *line)
 			demo_state_w=1;
 		} else if(line[1] == 'C') {
 			demo_state_w=0;
+		} else if(line[1] == 'I') {
+			demo_state_w=2;
 #endif
 		} else if (!line[1]) {
 			FILE *fd = bus_description(); 
