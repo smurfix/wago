@@ -171,6 +171,7 @@ void mon_delbuf(struct bufferevent *buf)
 		if (mon->buf == buf) {
 			*pmon = mon->next;
 			mon_free(mon,buf);
+			return;
 		}
 		pmon = &mon->next;
 	}
