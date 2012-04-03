@@ -59,7 +59,7 @@ The line protocol
 The interface to the daemon consists of a simple command/response
 protocol.
 
-Commands are single letters. They might have (a fixed number of) arguments.
+Commands are single letters. They might have arguments.
 
 Responses are each introduced with a single special character:
 
@@ -67,9 +67,6 @@ Responses are each introduced with a single special character:
 
  +  a single-line positive response.
     Depending on the command, it may include data.
-
- +! A positive response which starts with a number.
-    That number will be used to identify future signals.
 
  ?  A single-line negative response, indicating an error.
 
@@ -82,4 +79,11 @@ Responses are each introduced with a single special character:
  !- indicates that a signal has been cleared.
     For outputs, this means that the port has been changed manually.
 
+
+Commands
+--------
+
+Use 'h' for basic help, and a command list.
+
+Use 'hX' for basic help, and a command list.
 

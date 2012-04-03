@@ -37,6 +37,7 @@ struct _mon {
 
 int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct bufferevent *buf,
 	unsigned int msec1, unsigned int msec2);
+int mon_grab(int id, struct bufferevent *buf);
 int mon_del(int id, struct bufferevent *buf);
 void mon_delbuf(struct bufferevent *buf);
 

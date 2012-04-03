@@ -150,6 +150,26 @@ static void mon_free(struct _mon_priv *mon, struct bufferevent *buf)
 	free(mon);
 }
 
+int mon_grab(int id, struct bufferevent *buf)
+{
+	struct _mon_priv *mon = mon_list;
+	while(mon) {
+		if (mon->mon.id == id) {
+			if (mon->buf == NULL) {
+				mon->buf = buf;
+				return 0;
+			} else if (mon->buf == buf)
+				errno = EADDRINUSE;
+			else
+				errno = EBUSY;
+			return -1;
+		}
+		mon = mon->next;
+	}
+	errno = ENOENT;
+	return -1;
+}
+
 int mon_del(int id, struct bufferevent *buf)
 {
 	struct _mon_priv **pmon = &mon_list;

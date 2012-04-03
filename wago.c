@@ -381,7 +381,7 @@ interface_setup(struct event_base *base, evutil_socket_t fd)
 	return 0;
 }
 
-static const char std_help[] = "=\
+static const char std_help[] = "=\n\
 Known functions:\n\
 h     print help messages\n\
 i A B read bit from input port A, pos B\n\
@@ -394,44 +394,49 @@ D     dump port info\n\
 \n\
 Send 'hX' for help on function X.\n\
 .\n";
-static const char std_help_h[] = "=\
+static const char std_help_h[] = "=\n\
 h  send a generic help message, list functions\n\
 hX send specific help on function X\n\
 .\n";
-static const char std_help_d[] = "=\
+static const char std_help_d[] = "=\n\
 d   report current poll frequency (seconds).\n\
 dc  report poll delay (seconds).\n\
 d X set poll frequency to X (0.001 < X < 1000 seconds).\n\
 .\n";
-static const char std_help_m[] = "=\
+static const char std_help_m[] = "=\n\
 m          list current monitor records.\n\
            This includes timed set/clear commands.\n\
 m+ A B D   report changes of bit on input port A, offset B.\n\
            D is + - * for positive, negative, or both edges.\n\
 		   The command replies with a monitor ID.\n\
+		   This monitor will be deallocated when the channel closes.\n\
 m# A B D I count changes, report at most every I seconds.\n\
 		   The command replies with a monitor ID.\n\
+		   This monitor will be deallocated when the channel closes.\n\
+m? X       Re-attach to a monitor whose channel has disconnected.\n\
 m- X       delete change monitor with monitor ID X.\n\
 .\n";
-static const char std_help_i[] = "=\
+static const char std_help_i[] = "=\n\
 i A B  read a bit on input port A, offset B.\n\
 .\n";
-static const char std_help_I[] = "=\
+static const char std_help_I[] = "=\n\
 I A B  read the state of bit on output port A, offset B.\n\
 .\n";
-static const char std_help_s[] = "=\
+static const char std_help_s[] = "=\n\
 s A B       set a bit on output port A, offset B.\n\
 s A B I   … for I seconds.\n\
 s A B I J … then clear for J seconds, repeat.\n\
-            See monitor subcommands for reporting.\n\
+            This creates a monitor which persists if the channel closes.\n\
+            See 'hm' for reporting.\n\
 .\n";
-static const char std_help_c[] = "=\
+static const char std_help_c[] = "=\n\
 c A B  clear a bit on output port A, offset B.\n\
 c A B I   … for I seconds.\n\
 c A B I J … then set for J seconds, repeat.\n\
-            See monitor subcommands for reporting.\n\
+            This creates a monitor which persists if the channel closes.\n\
+            See 'hm' for reporting.\n\
 .\n";
-static const char std_help_D[] = "=\
+static const char std_help_D[] = "=\n\
 D  dump port list (human-readable version).\n\
 Dp dump port list (parsed list).\n";
 static const char std_help_D2[] = "\
@@ -442,7 +447,7 @@ DC Write-port read commands will read L.\n\
 DI Write-port read commands will read the expected value.\n\
 Dr Port reads are deterministic.\n\
 DR Port reads are 10% likely to read the opposite state.\n";
-static const char std_help_unknown[] = "=\
+static const char std_help_unknown[] = "=\n\
 You requested help on an unknown function (%d).\n\
 Send 'h' for a list of known functions.\n\
 .\n";
@@ -623,6 +628,16 @@ parse_input(struct bufferevent *bev, const char *line)
 				return;
 			}
 			evbuffer_add_printf(out,"+Monitor %d deleted.\n",p1);
+		} else if(line[1] == '?') {
+			if(sscanf(line+2,"%d",&p1) != 1) {
+				evbuffer_add_printf(out,"?'m?' needs a numeric parameter.\n");
+				return;
+			}
+			if(mon_grab(p1,bev) < 0) {
+				evbuffer_add_printf(out,"?'m?' error taking monitor %d: %s\n",p1,strerror(errno));
+				return;
+			}
+			evbuffer_add_printf(out,"+Monitor %d attached.\n",p1);
 		} else {
 			evbuffer_add_printf(out,"?Unknown subcommand: '%c'. Help with 'hm'.\n",line[1]);
 		}
