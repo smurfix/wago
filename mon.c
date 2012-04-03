@@ -35,6 +35,12 @@ static void counter_cb(evutil_socket_t sig, short events, void *user_data);
 static void once_cb(evutil_socket_t sig, short events, void *user_data);
 static void loop_cb(evutil_socket_t sig, short events, void *user_data);
 
+static inline struct evbuffer *outbuf(struct _mon_priv *mon) {
+	if (mon->buf == NULL)
+		return NULL;
+	return bufferevent_get_output(mon->buf);
+}
+
 int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct bufferevent *buf,
 	unsigned int msec, unsigned int msec2)
 {
@@ -135,9 +141,10 @@ static void mon_free(struct _mon_priv *mon, struct bufferevent *buf)
 		event_del(mon->timer);
 		event_free(mon->timer);
 	}
-	if(mon->buf != NULL && mon->buf != buf) {
-		struct evbuffer *out = bufferevent_get_output(mon->buf);
-		evbuffer_add_printf(out, "!-%d Deleted.\n", mon->mon.id);
+	if(mon->buf != buf) {
+		struct evbuffer *out = outbuf(mon);
+		if(out)
+			evbuffer_add_printf(out, "!-%d Deleted.\n", mon->mon.id);
 	}
 
 	free(mon);
@@ -169,9 +176,16 @@ void mon_delbuf(struct bufferevent *buf)
 		if (mon == NULL)
 			return;
 		if (mon->buf == buf) {
-			*pmon = mon->next;
-			mon_free(mon,buf);
-			return;
+			mon->buf = NULL;
+			switch(mon->mon.typ) {
+			case MON_SET_ONCE:
+			case MON_CLEAR_ONCE:
+				break;
+			default:
+				*pmon = mon->next;
+				mon_free(mon,buf);
+				continue;
+			}
 		}
 		pmon = &mon->next;
 	}
@@ -227,18 +241,19 @@ static void
 counter_cb(evutil_socket_t sig, short events, void *user_data)
 {
 	struct _mon_priv *mon = (struct _mon_priv *)user_data;
-	struct evbuffer *out = bufferevent_get_output(mon->buf);
+	struct evbuffer *out = outbuf(mon);
 
 	event_free(mon->timer);
 	mon->timer = NULL;
-	evbuffer_add_printf(out, "!%d %ld\n", mon->mon.id, mon->count);
+	if(out)
+		evbuffer_add_printf(out, "!%d %ld\n", mon->mon.id, mon->count);
 }
 
 static void
 once_cb(evutil_socket_t sig, short events, void *user_data)
 {
 	struct _mon_priv *mon = (struct _mon_priv *)user_data;
-	struct evbuffer *out = bufferevent_get_output(mon->buf);
+	struct evbuffer *out = outbuf(mon);
 
 	if(debug)
 		printf("monitor %d triggers\n", mon->mon.id);
@@ -248,11 +263,12 @@ once_cb(evutil_socket_t sig, short events, void *user_data)
 #endif
 		(_bus_read_wbit(mon->_port,mon->_offset) == mon->state)) {
 		_bus_write_bit(mon->_port,mon->_offset, !mon->state);
-		evbuffer_add_printf(out, "!%d TRIGGER\n", mon->mon.id);
+		if(out)
+			evbuffer_add_printf(out, "!%d TRIGGER\n", mon->mon.id);
 		bus_sync();
 	} else {
-		evbuffer_add_printf(out, "!-%d Already changed!\n", mon->mon.id);
-		mon->buf = NULL;
+		if(out)
+			evbuffer_add_printf(out, "!-%d Already changed!\n", mon->mon.id);
 	}
 
 	event_free(mon->timer);
@@ -265,7 +281,7 @@ static void
 loop_cb(evutil_socket_t sig, short events, void *user_data)
 {
 	struct _mon_priv *mon = (struct _mon_priv *)user_data;
-	struct evbuffer *out = bufferevent_get_output(mon->buf);
+	struct evbuffer *out = outbuf(mon);
 	struct timeval tv;
 
 	if(_bus_read_wbit(mon->_port,mon->_offset) == mon->state) {
@@ -290,7 +306,8 @@ loop_cb(evutil_socket_t sig, short events, void *user_data)
 		event_free(mon->timer);
 		mon->timer = NULL;
 
-		evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
+		if(out)
+			evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
 
 		mon->buf = NULL;
 		mon_del(mon->mon.id, NULL);
@@ -304,7 +321,7 @@ void mon_sync(void)
 
 	for(mon = mon_list; mon; mon = mon2) {
 		unsigned char state;
-		struct evbuffer *out = bufferevent_get_output(mon->buf);
+		struct evbuffer *out = outbuf(mon);
 
 		mon2 = mon->next;
 
@@ -332,7 +349,8 @@ void mon_sync(void)
 		clear_common:
 			if(debug)
 				printf("Mon%d: dropped, found %c\n", mon->mon.id, state?'H':'L');
-			evbuffer_add_printf(out, "!-%d DROP %c: saw external change in loop\n", mon->mon.id, state?'H':'L');
+			if(out)
+				evbuffer_add_printf(out, "!-%d DROP %c: saw external change in loop\n", mon->mon.id, state?'H':'L');
 			mon->buf = NULL;
 			mon_del(mon->mon.id, NULL);
 			break;
@@ -342,7 +360,8 @@ void mon_sync(void)
 		mon_report:
 			if(debug)
 				printf("Mon%d: %c\n", mon->mon.id, state?'H':'L');
-			evbuffer_add_printf(out, "!%d %c\n", mon->mon.id, state?'H':'L');
+			if(out)
+				evbuffer_add_printf(out, "!%d %c\n", mon->mon.id, state?'H':'L');
 			break;
 		case MON_REPORT_H:
 			if(!state) continue;
@@ -360,8 +379,10 @@ void mon_sync(void)
 					printf("Mon%d: %ld %ld.%06lu\n", mon->mon.id, mon->count, mon->delay.tv_sec,mon->delay.tv_usec);
 				mon->timer = event_new(base, -1, EV_TIMEOUT, counter_cb, mon);
 				if(mon->timer == NULL || event_add(mon->timer, &mon->delay)) {
-					evbuffer_add_printf(out, "!%d %ld\n", mon->mon.id, mon->count);
-					evbuffer_add_printf(out, "* Monitor timeout: error: %s\n", strerror(errno));
+					if(out) {
+						evbuffer_add_printf(out, "!%d %ld\n", mon->mon.id, mon->count);
+						evbuffer_add_printf(out, "* Monitor timeout: error: %s\n", strerror(errno));
+					}
 				}
 				event_base_gettimeofday_cached(base, &mon->last);
 			} else {
