@@ -179,7 +179,9 @@ void mon_delbuf(struct bufferevent *buf)
 			mon->buf = NULL;
 			switch(mon->mon.typ) {
 			case MON_SET_ONCE:
+			case MON_SET_LOOP:
 			case MON_CLEAR_ONCE:
+			case MON_CLEAR_LOOP:
 				break;
 			default:
 				*pmon = mon->next;
@@ -306,6 +308,8 @@ loop_cb(evutil_socket_t sig, short events, void *user_data)
 		event_free(mon->timer);
 		mon->timer = NULL;
 
+		if(debug)
+			printf("monitor %d: ext change: %c\n", mon->mon.id, mon->state ? 'H' : 'L');
 		if(out)
 			evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
 
