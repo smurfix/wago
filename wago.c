@@ -511,18 +511,25 @@ parse_input(struct bufferevent *bev, const char *line)
 #ifdef DEMO
 		} else if(line[1] == 'r') {
 			demo_rand = 0;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'R') {
 			demo_rand = 1;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 's') {
 			demo_state_r=1;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'c') {
 			demo_state_r=0;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'S') {
 			demo_state_w=1;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'C') {
 			demo_state_w=0;
+			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'I') {
 			demo_state_w=2;
+			evbuffer_add(out,"+OK\n",4);
 #endif
 		} else if (!line[1]) {
 			FILE *fd = bus_description(); 
