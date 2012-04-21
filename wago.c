@@ -65,12 +65,20 @@ static void conn_eventcb(struct bufferevent *, short, void *);
 static void conn_readcb(struct bufferevent *, void *);
 static void signal_cb(evutil_socket_t, short, void *);
 static void timer_cb(evutil_socket_t, short, void *);
+#ifdef DEMO
+static void off_cb(evutil_socket_t, short, void *);
+#endif
 static int interface_setup(struct event_base *base, evutil_socket_t fd);
 
 struct event_base *base = NULL;
 static struct evconnlistener *listener = NULL;
 static struct event *signal_event = NULL;
 static struct event *timer_event = NULL;
+
+struct ev_at_buf {
+	struct bufferevent *bev;
+	struct event *ev;
+};
 
 extern char *__progname; /* from uClibc */
 static void
@@ -425,6 +433,8 @@ I A B  read the state of bit on output port A, offset B.\n\
 static const char std_help_s[] = "=\n\
 s A B       set a bit on output port A, offset B.\n\
 s A B I   … for I seconds.\n\
+            This creates a one-shot monitor which persists until the timer\n\
+            runs out.\n\
 s A B I J … then clear for J seconds, repeat.\n\
             This creates a monitor which persists if the channel closes.\n\
             See 'hm' for reporting.\n\
@@ -440,6 +450,7 @@ static const char std_help_D[] = "=\n\
 D  dump port list (human-readable version).\n\
 Dp dump port list (parsed list).\n";
 static const char std_help_D2[] = "\
+D- Disconnect; simulates a connection problem.\n\
 Ds Read-port read commands will read H.\n\
 Dc Read-port read commands will read L.\n\
 DS Write-port read commands will read H.\n\
@@ -509,6 +520,26 @@ parse_input(struct bufferevent *bev, const char *line)
 			bus_enum(report_bus, out);
 			evbuffer_add(out,".\n",2);
 #ifdef DEMO
+		} else if(line[1] == '-') {
+			struct timeval dly = {0,50000}; /* 1/20 sec */
+			struct ev_at_buf *eb = malloc(sizeof(struct ev_at_buf));
+			if (eb == NULL) {
+				evbuffer_add(out,"-no memory\n",4);
+				return;
+			}
+			struct event *ev = NULL;
+
+			evbuffer_add(out,"+OK\n",4);
+			mon_delbuf(bev);
+			bufferevent_flush(bev,EV_WRITE,BEV_FLUSH);
+
+			eb->bev = bev;
+			eb->ev = event_new(base, -1, EV_TIMEOUT, off_cb, eb);
+			if (!eb->ev || event_add(eb->ev, &dly)<0) {
+				fprintf(stderr, "Could not create/add a timeout event: %s\n",strerror(errno));
+				free(ev);
+				return;
+			}
 		} else if(line[1] == 'r') {
 			demo_rand = 0;
 			evbuffer_add(out,"+OK\n",4);
@@ -777,3 +808,14 @@ timer_cb(evutil_socket_t sig, short events, void *user_data)
 	mon_sync();
 }
 
+#ifdef DEMO
+static void
+off_cb(evutil_socket_t sig, short events, void *user_data)
+{
+	struct ev_at_buf *eb = (struct ev_at_buf *)user_data;
+	bufferevent_free(eb->bev);
+	event_free(eb->ev);
+	free(eb);
+}
+
+#endif
