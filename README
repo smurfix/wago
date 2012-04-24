@@ -73,11 +73,13 @@ Responses are each introduced with a single special character:
  =  a multi-line response, terminated by a single dot. (cf. SMTP.)
     Used primarily for help messages.
 
- !  a signal. The first parameter is the signal number. Further
-    parameters depend on the type of signal requested.
+The following messages contain a monitor number after the initial character(s).
 
- !- indicates that a signal has been cleared.
-    For outputs, this means that the port has been changed manually.
+ !+ a monitor has been created.
+
+ !  a signal from a monitor. Parameters depend on the type of signal requested.
+
+ !- the monitor has been cleared.
 
 
 Commands

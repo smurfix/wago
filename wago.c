@@ -721,7 +721,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				else
 					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 			} else if (p3)
-				evbuffer_add_printf(out,"+%d Set, monitor started.\n", res);
+				evbuffer_add_printf(out,"!+%d Set, monitor started.\n", res);
 			else
 				evbuffer_add_printf(out,"+Set.\n");
 			bus_sync();
@@ -737,7 +737,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				else
 					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 			} else if (p3)
-				evbuffer_add_printf(out,"+%d Cleared, monitor started.\n", res);
+				evbuffer_add_printf(out,"!+%d Cleared, monitor started.\n", res);
 			else
 				evbuffer_add_printf(out,"+Cleared.\n");
 			bus_sync();
