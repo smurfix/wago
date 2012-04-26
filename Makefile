@@ -17,6 +17,10 @@ LIBS=-levent
 
 all: wago.bflt wago
 
+install:
+	install wago $(ROOT)/usr/lib/homevent/
+	install wago.bflt $(ROOT)/usr/lib/homevent/
+
 w: wago.bflt
 	-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago1 . wago.bflt
 	#-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago2 . wago.bflt
