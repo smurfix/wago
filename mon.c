@@ -34,6 +34,7 @@ static int last_mon_id = 0;
 static void counter_cb(evutil_socket_t sig, short events, void *user_data);
 static void once_cb(evutil_socket_t sig, short events, void *user_data);
 static void loop_cb(evutil_socket_t sig, short events, void *user_data);
+static void keepalive_cb(evutil_socket_t sig, short events, void *user_data);
 
 static inline struct evbuffer *outbuf(struct _mon_priv *mon) {
 	if (mon->buf == NULL)
@@ -68,11 +69,12 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 				return -1;
 			}
 		}
-	} else {
+	} else if (typ > _MON_UNKNOWN_IN) {
 		if (bus_is_read_bit(&_port,&_offset) < 0)
 			return -1;
 		state = _bus_read_bit(_port,_offset);
-	}
+	} else
+		state = 0;
 
 	mon = malloc(sizeof(*mon));
 	if (mon == NULL)
@@ -88,7 +90,7 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 	mon->buf = buf;
 	mon->delay.tv_sec = msec/1000;
 	mon->delay.tv_usec = 1000*(msec-1000*mon->delay.tv_sec);
-	if(typ > _MON_UNKNOWN_OUT) {
+	if(typ < _MON_UNKNOWN_IN || typ > _MON_UNKNOWN_OUT) {
 		switch(typ) {
 		case MON_SET_LOOP:
 		case MON_CLEAR_LOOP:
@@ -99,6 +101,9 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 		case MON_SET_ONCE:
 		case MON_CLEAR_ONCE:
 			mon->timer = event_new(base, -1, EV_TIMEOUT, once_cb, mon);
+			break;
+		case MON_KEEPALIVE:
+			mon->timer = event_new(base, -1, EV_TIMEOUT, keepalive_cb, mon);
 			break;
 		default:
 			break;
@@ -333,6 +338,24 @@ loop_cb(evutil_socket_t sig, short events, void *user_data)
 		if(out)
 			evbuffer_add_printf(out, "!-%d DROP: saw external change in timer\n", mon->mon.id);
 
+		mon->buf = NULL;
+		mon_del(mon->mon.id, NULL);
+	}
+}
+
+static void
+keepalive_cb(evutil_socket_t sig, short events, void *user_data)
+{
+	struct _mon_priv *mon = (struct _mon_priv *)user_data;
+	struct evbuffer *out = outbuf(mon);
+
+	if (out) {
+		mon->count++;
+		evbuffer_add_printf(out, "!%d PING %ld\n", mon->mon.id, mon->count);
+		event_add(mon->timer, &mon->delay);
+		event_base_gettimeofday_cached(base, &mon->last);
+	} else {
+		event_free(mon->timer);
 		mon->buf = NULL;
 		mon_del(mon->mon.id, NULL);
 	}

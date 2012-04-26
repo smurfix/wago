@@ -447,17 +447,18 @@ c A B I J … then set for J seconds, repeat.\n\
             See 'hm' for reporting.\n\
 .\n";
 static const char std_help_D[] = "=\n\
-D  dump port list (human-readable version).\n\
-Dp dump port list (parsed list).\n";
+D   dump port list (human-readable version).\n\
+Da# send a keepalive message every # seconds.\n\
+Dp  dump port list (parsed list).\n";
 static const char std_help_D2[] = "\
-D- Disconnect; simulates a connection problem.\n\
-Ds Read-port read commands will read H.\n\
-Dc Read-port read commands will read L.\n\
-DS Write-port read commands will read H.\n\
-DC Write-port read commands will read L.\n\
-DI Write-port read commands will read the expected value.\n\
-Dr Port reads are deterministic.\n\
-DR Port reads are 10% likely to read the opposite state.\n";
+D-  Disconnect; simulates a connection problem.\n\
+Ds  Read-port read commands will read H.\n\
+Dc  Read-port read commands will read L.\n\
+DS  Write-port read commands will read H.\n\
+DC  Write-port read commands will read L.\n\
+DI  Write-port read commands will read the expected value.\n\
+Dr  Port reads are deterministic.\n\
+DR  Port reads are 10% likely to read the opposite state.\n";
 static const char std_help_unknown[] = "=\n\
 You requested help on an unknown function (%d).\n\
 Send 'h' for a list of known functions.\n\
@@ -519,6 +520,19 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add_printf(out,"=Reporting bus data\n");
 			bus_enum(report_bus, out);
 			evbuffer_add(out,".\n",2);
+		} else if(line[1] == 'a') {
+			int mon_id;
+			if(sscanf(line+2,"%g",&p3) != 1) {
+				evbuffer_add_printf(out,"?Da needs a float parameter.\n");
+				break;
+			}
+			mon_id = mon_new(MON_KEEPALIVE,0,0, bev, (int)(p3*1000),0);
+			if(mon_id < 1) {
+				evbuffer_add_printf(out,"?'Da' error creating monitor: %s\n",strerror(errno));
+				return;
+			}
+			evbuffer_add_printf(out,"+%d monitor created\n",mon_id);
+
 #ifdef DEMO
 		} else if(line[1] == '-') {
 			struct timeval dly = {0,50000}; /* 1/20 sec */

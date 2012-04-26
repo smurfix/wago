@@ -7,6 +7,12 @@
 enum mon_type {
 	MON_UNKNOWN,
 
+	/* report every N seconds */
+	MON_KEEPALIVE,
+
+	/* Marker; above is nothing, below are inputs */
+	_MON_UNKNOWN_IN,
+
 	/* report input changes */
 	MON_REPORT,
 	MON_REPORT_H,
