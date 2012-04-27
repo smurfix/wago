@@ -531,7 +531,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				evbuffer_add_printf(out,"?'Da' error creating monitor: %s\n",strerror(errno));
 				return;
 			}
-			evbuffer_add_printf(out,"+%d monitor created\n",mon_id);
+			evbuffer_add_printf(out,"!+%d monitor created\n",mon_id);
 
 #ifdef DEMO
 		} else if(line[1] == '-') {
@@ -669,7 +669,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				evbuffer_add_printf(out,"?'m%c' error creating monitor: %s\n",line[1],strerror(errno));
 				return;
 			}
-			evbuffer_add_printf(out,"+%d monitor created\n",mon_id);
+			evbuffer_add_printf(out,"!+%d monitor created\n",mon_id);
 		} else if(line[1] == '-') {
 			if(sscanf(line+2,"%d",&p1) != 1) {
 				evbuffer_add_printf(out,"?'m-' needs a numeric parameter.\n");
