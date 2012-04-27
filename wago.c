@@ -53,6 +53,7 @@ char debug =
 char demo_rand = 2;
 char demo_state_r = 0;
 char demo_state_w = 0;
+char demo_state_skip = 0;
 #endif
 
 static int port = 59995;
@@ -568,12 +569,14 @@ parse_input(struct bufferevent *bev, const char *line)
 			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'S') {
 			demo_state_w=1;
+			demo_state_skip=0;
 			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'C') {
 			demo_state_w=0;
+			demo_state_skip=0;
 			evbuffer_add(out,"+OK\n",4);
 		} else if(line[1] == 'I') {
-			demo_state_w=2;
+			demo_state_skip=1;
 			evbuffer_add(out,"+OK\n",4);
 #endif
 		} else if (!line[1]) {

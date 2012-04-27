@@ -10,6 +10,7 @@ extern char debug;
 extern char demo_rand;
 extern char demo_state_r;
 extern char demo_state_w;
+extern char demo_state_skip;
 #endif
 
 #endif

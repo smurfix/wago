@@ -56,7 +56,7 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 		state = _bus_read_wbit(_port,_offset);
 
 #ifdef DEMO
-		if (demo_state_w==2) { } else 
+		if (demo_state_skip) { } else 
 #endif
 		if (state) {
 			if (typ == MON_SET_ONCE || typ == MON_SET_LOOP) {
@@ -290,7 +290,7 @@ once_cb(evutil_socket_t sig, short events, void *user_data)
 		printf("monitor %d triggers\n", mon->mon.id);
 	if (
 #ifdef DEMO
-		(demo_state_w == 2) ||
+		(demo_state_skip) ||
 #endif
 		(_bus_read_wbit(mon->_port,mon->_offset) == mon->state)) {
 		_bus_write_bit(mon->_port,mon->_offset, !mon->state);
@@ -378,7 +378,7 @@ void mon_sync(void)
 
 		if (mon->mon.typ > _MON_UNKNOWN_OUT) {
 #ifdef DEMO
-			if (demo_state_w==2)
+			if (demo_state_skip)
 				continue;
 #endif
 			state = _bus_read_wbit(mon->_port,mon->_offset);
