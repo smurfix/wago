@@ -236,6 +236,10 @@ int mon_enum(mon_enum_fn enum_fn, void *priv)
 const char *mon_typname(enum mon_type typ)
 {
 	switch(typ) {
+	/* no ports */
+	case MON_KEEPALIVE:
+		return "keepalive";
+
 	/* read ports */
 	case MON_REPORT:
 		return "report change";
