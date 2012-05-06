@@ -15,11 +15,10 @@ OBJ := $(addsuffix .o,$(basename $(SRC)))
 WOBJ := $(addsuffix .ao,$(basename $(SRC)))
 LIBS=-levent
 
-all: wago.bflt wago
+all: wago
 
-install:
+install: wago
 	install wago $(ROOT)/usr/lib/homevent/
-	install wago.bflt $(ROOT)/usr/lib/homevent/
 
 w: wago.bflt
 	-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago1 . wago.bflt
