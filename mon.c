@@ -142,15 +142,13 @@ int mon_new(enum mon_type typ, unsigned char port, unsigned char offset, struct 
 
 static void mon_free(struct _mon_priv *mon, struct bufferevent *buf)
 {
+	struct evbuffer *out = outbuf(mon);
 	if (mon->timer) {
 		event_del(mon->timer);
 		event_free(mon->timer);
 	}
-	if(mon->buf != buf) {
-		struct evbuffer *out = outbuf(mon);
-		if(out)
-			evbuffer_add_printf(out, "!-%d Deleted.\n", mon->mon.id);
-	}
+	if(out)
+		evbuffer_add_printf(out, "!-%d Deleted.\n", mon->mon.id);
 
 	free(mon);
 }
