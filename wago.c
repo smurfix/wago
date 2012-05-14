@@ -734,7 +734,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				res = bus_write_bit(p1,p2,1);
 			if (res < 0) {
 				if (errno == EEXIST)
-					evbuffer_add_printf(out,"?already set\n");
+					evbuffer_add_printf(out,"%calready set\n", p3 ? '?' : '+');
 				else
 					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 			} else if (p3)
@@ -750,7 +750,7 @@ parse_input(struct bufferevent *bev, const char *line)
 				res = bus_write_bit(p1,p2,0);
 			if (res < 0) {
 				if (errno == EEXIST)
-					evbuffer_add_printf(out,"?already cleared\n");
+					evbuffer_add_printf(out,"%calready cleared\n", p3 ? '?' : '+');
 				else
 					evbuffer_add_printf(out,"?error: %s\n",strerror(errno));
 			} else if (p3)
