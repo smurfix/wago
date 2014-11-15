@@ -179,7 +179,7 @@ int mon_del(int id, struct bufferevent *buf)
 	while(1) {
 		struct _mon_priv *mon = *pmon;
 		if (mon == NULL) {
-			errno = -ENOENT;
+			errno = ENOENT;
 			return -1;
 		}
 		if (mon->mon.id == id) {
