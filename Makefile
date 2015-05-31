@@ -18,7 +18,7 @@ LIBS=-levent
 all: wago
 
 install: wago
-	install wago $(ROOT)/usr/lib/homevent/
+	install wago $(ROOT)/usr/lib/moat/
 
 w: wago.bflt
 	-ncftpput -uroot -Y"CHMOD 755 wago.bflt" wago1 . wago.bflt
